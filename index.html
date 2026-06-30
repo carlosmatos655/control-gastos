@@ -234,17 +234,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 
 <script>
 // ══ CONFIG ══════════════════════════════════════════════
-// URL publicada de tu Google Sheets (obtenida de "Publicar en la web")
-const PUB_ID  = '2PACX-1vTos8lptmrB01-QQaxX76RRJAK_yXxY-jnHopUiUlrLgMKKbhPTce7NgpdewxoR0wB-iu99SN_FZ7mJ';
 const SHEET_ID = '19RA46O6rL1Hp5-AvK0Exq3l3j9NPmAZVurbD6Z8w-lY';
 
-// Intenta varias URLs en orden hasta que una funcione
-function getURLs(sheetName) {
-  return [
-    `https://docs.google.com/spreadsheets/d/e/${PUB_ID}/pub?output=csv&sheet=${encodeURIComponent(sheetName)}`,
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`,
-    `https://docs.google.com/spreadsheets/d/${SHEET_ID}/pub?output=csv&sheet=${encodeURIComponent(sheetName)}`,
-  ];
+// gviz/tq SÍ lee por nombre de pestaña correctamente (a diferencia de /pub que
+// solo lee por gid e ignora el parámetro sheet=, devolviendo siempre la misma hoja)
+function getGvizUrl(sheetName) {
+  return `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}&_ts=${Date.now()}`;
 }
 
 // ══ FALLBACK DATA (29-Jun-2026) ═════════════════════════
@@ -318,19 +313,19 @@ function parseFecha(str){
 function fmtPEN(v){return 'S/.'+v.toLocaleString('es-PE',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function fmtNum(v){return v.toLocaleString('es-PE',{minimumFractionDigits:0})}
 
-// ══ FETCH ════════════════════════════════════════════════
-async function fetchSheet(sheetName) {
-  const urls = getURLs(sheetName);
-  let lastErr;
-  for(const url of urls){
-    try{
-      const r = await fetch(url, {cache:'no-store'});
-      if(!r.ok) continue;
-      const txt = await r.text();
-      if(txt && txt.length > 20 && !txt.includes('<!DOCTYPE')) return parseCSV(txt);
-    }catch(e){ lastErr=e; }
+// ══ FETCH (con validación de contenido por hoja) ════════
+async function fetchSheet(sheetName, validateFn) {
+  const url = getGvizUrl(sheetName);
+  const res = await fetch(url, {cache:'no-store'});
+  if (!res.ok) throw new Error(`No se pudo leer "${sheetName}" (HTTP ${res.status}). Verifica que el Sheets esté compartido con "Cualquier persona con el enlace".`);
+  const txt = await res.text();
+  if (!txt || txt.length < 10 || txt.includes('<!DOCTYPE') || txt.includes('<html')) {
+    throw new Error(`Respuesta inválida al leer "${sheetName}".`);
   }
-  throw lastErr || new Error('No se pudo acceder al Sheets');
+  if (validateFn && !validateFn(txt)) {
+    throw new Error(`La pestaña "${sheetName}" no tiene el contenido esperado — revisa que el nombre de la pestaña en tu Sheets sea exactamente "${sheetName}".`);
+  }
+  return parseCSV(txt);
 }
 
 function parseMovimientos(rows){
@@ -348,7 +343,6 @@ function parseMovimientos(rows){
 function parsePresupuesto(rows){
   let start=rows.findIndex(r=>r[0]&&r[0].toLowerCase().includes('categoría'));
   if(start<0)start=0; else start++;
-  const COLORMAP={Débito:'#4dabf7',Ahorro:'#be8cf8',Crédito:'#4dabf7','Ahorro USD':'#fb923c'};
   return rows.slice(start).filter(r=>r[0]&&!r[0].toLowerCase().includes('tabla')&&!r[0].toLowerCase().includes('categoría')&&parseAmt(r[2])>0).map(r=>({
     categoria:r[0],tipo:r[1]||'',presupuesto:parseAmt(r[2]),gastoReal:parseAmt(r[3]),moneda:String(r[2]).includes('$')?'USD':'PEN',
   }));
@@ -376,14 +370,14 @@ async function syncNow(){
 
   try{
     const [rM,rP,rC]=await Promise.all([
-      fetchSheet('DB_Movimientos'),
-      fetchSheet('Presupuesto'),
-      fetchSheet('Tarjetas_y_Cuentas'),
+      fetchSheet('DB_Movimientos', t => /fecha/i.test(t) && /monto/i.test(t)),
+      fetchSheet('Presupuesto',    t => /presupuesto/i.test(t) || /categor/i.test(t)),
+      fetchSheet('Tarjetas_y_Cuentas', t => /tarjeta/i.test(t) || /l[íi]nea/i.test(t)),
     ]);
     const movs=parseMovimientos(rM);
     const pres=parsePresupuesto(rP);
     const cuen=parseCuentas(rC);
-    if(!movs||!pres||!cuen)throw new Error('Datos incompletos');
+    if(!pres.length||!cuen.length) throw new Error('Datos incompletos al parsear las hojas');
 
     state.movimientos=movs;
     state.presupuesto=pres;
@@ -394,7 +388,6 @@ async function syncNow(){
     const now=new Date();
     document.getElementById('lastSync').textContent=`Sincronizado: ${now.toLocaleDateString('es-PE')} ${now.toLocaleTimeString('es-PE',{hour:'2-digit',minute:'2-digit'})}`;
 
-    // Guardar en storage
     try{ await window.storage.set('moncho_data',JSON.stringify({movs:state.movimientos.map(m=>({...m,fechaTs:undefined})),pres:state.presupuesto,cuen:state.cuentas,ts:now.toISOString()})); }catch(e){}
 
     populateCatSelect();
