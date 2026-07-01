@@ -167,6 +167,27 @@ tr:hover td{background:rgba(255,255,255,.02)}
 /* ── SUCCESS TOAST ── */
 .toast{position:fixed;bottom:90px;right:24px;background:#1a2540;border:1px solid var(--green);color:var(--green);padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:200;opacity:0;transform:translateY(10px);transition:.3s;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
+
+/* ── CUSTOM MULTI-SELECT (meses) ── */
+.ms-wrap{position:relative}
+.ms-btn{background:rgba(255,255,255,.06);border:1px solid var(--border2);color:var(--text);padding:6px 12px;border-radius:7px;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:8px;white-space:nowrap;transition:.15s;font-family:inherit}
+.ms-btn:hover{background:rgba(255,255,255,.1);border-color:var(--gold)}
+.ms-arrow{font-size:10px;color:var(--muted2);transition:.2s}
+.ms-drop{position:absolute;top:calc(100% + 6px);left:0;background:#1a2540;border:1px solid var(--border2);border-radius:10px;min-width:190px;z-index:500;box-shadow:0 8px 30px rgba(0,0,0,.5);overflow:hidden;display:none}
+.ms-drop.open{display:block}
+.ms-actions{display:flex;border-bottom:1px solid var(--border)}
+.ms-actions button{flex:1;background:rgba(255,255,255,.04);border:none;border-right:1px solid var(--border);color:var(--muted2);padding:7px 0;font-size:11px;cursor:pointer;font-family:inherit;transition:.15s}
+.ms-actions button:last-child{border-right:none}
+.ms-actions button:hover{background:rgba(255,255,255,.09);color:var(--text)}
+.ms-opt{display:flex;align-items:center;gap:9px;padding:8px 14px;cursor:pointer;font-size:12px;color:var(--muted2);transition:.15s;user-select:none}
+.ms-opt:hover{background:rgba(255,255,255,.05);color:var(--text)}
+.ms-opt.active{color:var(--text)}
+.ms-chk{width:15px;height:15px;border:1px solid var(--border2);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;flex-shrink:0;transition:.15s}
+.ms-opt.active .ms-chk{background:var(--gold);border-color:var(--gold);color:#000;font-weight:900}
+/* ── FIX CATEGORY DROPDOWN ── */
+.pill{background:#1a2540 !important;border:1px solid var(--border2) !important;color:var(--text) !important;padding:6px 28px 6px 11px !important;border-radius:7px;font-size:12px;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%238a9bbf' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E") !important;background-repeat:no-repeat !important;background-position:right 10px center !important;font-family:inherit}
+.pill:focus{border-color:var(--gold) !important;outline:none}
+.pill option{background:#1a2540;color:#e8edf5;padding:6px}
 </style>
 </head>
 <body>
@@ -193,10 +214,20 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="last-sync" id="lastSync">Iniciando...</div>
   </div>
   <div class="h-right">
-    <select class="pill" id="selMes" onchange="applyFilters()">
-      <option value="all">Todo el período</option>
-      <option value="06/2026" selected>Junio 2026</option>
-    </select>
+    <!-- Custom multi-select months -->
+    <div class="ms-wrap" id="mesWrap">
+      <button class="ms-btn" id="mesBtn" onclick="toggleMesDrop(event)">
+        <span id="mesLabel">Todo el período</span>
+        <span class="ms-arrow">▾</span>
+      </button>
+      <div class="ms-drop" id="mesDrop">
+        <div class="ms-actions">
+          <button onclick="mesSelectAll(event)">✓ Todos</button>
+          <button onclick="mesClearAll(event)">× Limpiar</button>
+        </div>
+        <div id="mesOptions"></div>
+      </div>
+    </div>
     <select class="pill" id="selCat" onchange="applyFilters()">
       <option value="all">Todas las categorías</option>
     </select>
@@ -534,6 +565,7 @@ async function syncNow(){
     try{ await window.storage.set('moncho_data',JSON.stringify({movs:state.movimientos.map(m=>({...m,fechaTs:undefined})),pres:state.presupuesto,cuen:state.cuentas,ts:now.toISOString()})); }catch(e){}
 
     populateCatSelect();
+    populateMesSelect();
     applyFilters();
 
   }catch(err){
@@ -672,10 +704,10 @@ function renderAll(){renderKPIs();renderCatChart();renderMedioChart();renderDisp
 
 // ══ FILTERS ══════════════════════════════════════════════
 function applyFilters(){
-  const mes=document.getElementById('selMes').value;
   const cat=document.getElementById('selCat').value;
   filteredMovs=state.movimientos.filter(m=>{
-    const mM=mes==='all'||m.fechaStr.endsWith(mes.split('-').reverse().join('/'));
+    const key=getMesKey(m.fechaStr);
+    const mM=selectedMeses.size===0||(key&&selectedMeses.has(key));
     const mC=cat==='all'||m.categoria===cat;
     return mM&&mC&&(tableFilter==='all'||m.tipoMov===tableFilter);
   });
@@ -688,6 +720,105 @@ function populateCatSelect(){
   const ex=new Set([...sel.options].map(o=>o.value));
   [...new Set(state.movimientos.map(m=>m.categoria))].forEach(c=>{if(!ex.has(c)){const o=document.createElement('option');o.value=c;o.text=c;sel.appendChild(o);}});
 }
+
+// ══ MULTI-SELECT MESES ═══════════════════════════════════════
+const MESES_ES = ['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+let selectedMeses = new Set(); // vacío = todo el período
+
+function getMesKey(fechaStr) {
+  const p = fechaStr.split('/');
+  return p.length===3 ? `${p[1]}/${p[2]}` : null;
+}
+
+function populateMesSelect(){
+  const meses = [...new Set(
+    state.movimientos.map(m => getMesKey(m.fechaStr)).filter(Boolean)
+  )].sort((a,b)=>{
+    const [ma,ya]=a.split('/');const [mb,yb]=b.split('/');
+    return (+ya*12+ +ma)-(+yb*12+ +mb);
+  });
+
+  const container = document.getElementById('mesOptions');
+  container.innerHTML = '';
+
+  // "Todo el período" option
+  const allOpt = document.createElement('div');
+  allOpt.className = 'ms-opt' + (selectedMeses.size===0?' active':'');
+  allOpt.innerHTML = `<div class="ms-chk">${selectedMeses.size===0?'✓':''}</div><span>Todo el período</span>`;
+  allOpt.onclick = ()=>{ selectedMeses.clear(); updateMesUI(meses); applyFilters(); };
+  container.appendChild(allOpt);
+
+  meses.forEach(mv => {
+    const [m,y] = mv.split('/');
+    const isActive = selectedMeses.has(mv);
+    const opt = document.createElement('div');
+    opt.className = 'ms-opt' + (isActive?' active':'');
+    opt.innerHTML = `<div class="ms-chk">${isActive?'✓':''}</div><span>${MESES_ES[+m]} ${y}</span>`;
+    opt.onclick = ()=>{
+      if(selectedMeses.has(mv)) selectedMeses.delete(mv);
+      else selectedMeses.add(mv);
+      updateMesUI(meses);
+      applyFilters();
+    };
+    container.appendChild(opt);
+  });
+
+  updateMesLabel();
+}
+
+function updateMesUI(meses){
+  populateMesSelect(); // re-render checkboxes
+}
+
+function updateMesLabel(){
+  const lbl = document.getElementById('mesLabel');
+  if(selectedMeses.size===0){
+    lbl.textContent='Todo el período';
+  } else if(selectedMeses.size===1){
+    const [m,y]=[...selectedMeses][0].split('/');
+    lbl.textContent=`${MESES_ES[+m]} ${y}`;
+  } else {
+    lbl.textContent=`${selectedMeses.size} meses`;
+  }
+}
+
+function toggleMesDrop(e){
+  e.stopPropagation();
+  const drop=document.getElementById('mesDrop');
+  drop.classList.toggle('open');
+  document.getElementById('mesBtn').querySelector('.ms-arrow').style.transform=
+    drop.classList.contains('open')?'rotate(180deg)':'';
+}
+
+function mesSelectAll(e){
+  e && e.stopPropagation();
+  selectedMeses.clear();
+  populateMesSelect();
+  applyFilters();
+}
+
+function mesClearAll(e){
+  e && e.stopPropagation();
+  // "Limpiar" selecciona el mes más reciente
+  const meses=[...new Set(state.movimientos.map(m=>getMesKey(m.fechaStr)).filter(Boolean))];
+  if(meses.length){
+    meses.sort((a,b)=>{const [ma,ya]=a.split('/');const [mb,yb]=b.split('/');return (+yb*12+ +mb)-(+ya*12+ +ma);});
+    selectedMeses=new Set([meses[0]]);
+  } else {
+    selectedMeses.clear();
+  }
+  populateMesSelect();
+  applyFilters();
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', e=>{
+  const wrap=document.getElementById('mesWrap');
+  if(wrap&&!wrap.contains(e.target)){
+    document.getElementById('mesDrop').classList.remove('open');
+    document.getElementById('mesBtn').querySelector('.ms-arrow').style.transform='';
+  }
+});
 
 // ══ INIT ═════════════════════════════════════════════════
 async function init(){
@@ -717,6 +848,7 @@ async function init(){
 
   filteredMovs=[...state.movimientos];
   populateCatSelect();
+  populateMesSelect();
   renderAll();
 
   if(inIframe){
@@ -728,6 +860,7 @@ async function init(){
   } else {
     // En navegador: sync automática
     await syncNow();
+    populateMesSelect();
   }
 }
 
