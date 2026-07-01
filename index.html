@@ -801,7 +801,7 @@ function openForm() {
   document.getElementById('formOv').classList.add('show');
   // Warn if URL not set
   document.getElementById('urlWarn').style.display =
-    APPS_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbzPOYjlUk49DGGDht-TCz51C3TZOf63JfneEeCWgbc_1NjXL3G8qdfWYWvdPRXQqV0dZA/exec' ? '' : 'none';
+    (!APPS_SCRIPT_URL || !APPS_SCRIPT_URL.includes('script.google.com')) ? '' : 'none';
 }
 
 function closeForm() {
@@ -893,7 +893,7 @@ function goPreview() {
 }
 
 async function submitMov() {
-  if (APPS_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbzPOYjlUk49DGGDht-TCz51C3TZOf63JfneEeCWgbc_1NjXL3G8qdfWYWvdPRXQqV0dZA/exec') {
+  if (!APPS_SCRIPT_URL || !APPS_SCRIPT_URL.includes('script.google.com')) {
     alert('⚠️ Configura el APPS_SCRIPT_URL primero.\n\nExtensiones → Apps Script → Deploy → Web App → copia la URL.');
     return;
   }
