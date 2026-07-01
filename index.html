@@ -889,30 +889,38 @@ function closeDelModal() {
 
 async function executeDel() {
   if (!pendingDel) return;
-  if (!APPS_SCRIPT_URL || !APPS_SCRIPT_URL.includes('script.google.com')) { alert('Configura el APPS_SCRIPT_URL.'); return; }
+  if (!APPS_SCRIPT_URL || !APPS_SCRIPT_URL.includes('script.google.com')) {
+    alert('Configura el APPS_SCRIPT_URL.'); return;
+  }
   const btn = document.getElementById('delBtn');
   btn.disabled = true; btn.textContent = '⏳ Eliminando...';
   try {
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body: JSON.stringify({action:'delete', ...pendingDel}), redirect:'follow',
+    // DELETE usa GET + query params (nunca POST) → imposible agregar filas por error
+    const qs = new URLSearchParams({
+      action:      'delete',
+      fecha:       pendingDel.fecha,
+      descripcion: pendingDel.descripcion,
+      monto:       String(pendingDel.monto),
+      categoria:   pendingDel.categoria,
+      medioPago:   pendingDel.medioPago,
     });
+    const res  = await fetch(`${APPS_SCRIPT_URL}?${qs.toString()}`);
     const text = await res.text();
-    // Si no podemos leer la respuesta (CORS opaque) → asumimos fallo, no éxito
-    if (!text) throw new Error('Sin respuesta del servidor. Revisa que el deploy esté activo.');
+    if (!text) throw new Error('Sin respuesta. Verifica que el Apps Script esté desplegado (v5).');
     let result;
-    try { result = JSON.parse(text); } catch(e) { throw new Error('Respuesta inválida: ' + text.substring(0, 100)); }
+    try { result = JSON.parse(text); } catch(e) {
+      throw new Error('Respuesta inesperada: ' + text.substring(0,120));
+    }
     if (result && result.status === 'error') throw new Error(result.message);
 
-    // ✅ Éxito confirmado
     closeDelModal();
     showToast('🗑️ Movimiento eliminado del Sheets');
-    setTimeout(()=>syncNow(), 1200);
+    setTimeout(()=>syncNow(), 1500);
 
   } catch(err) {
     btn.disabled=false; btn.textContent='🗑️ Eliminar';
-    alert('❌ Error al eliminar:\n\n' + (err.message||'Intenta de nuevo') +
-          '\n\n💡 Si el error persiste, elimina la fila directamente desde Google Sheets.');
+    alert('❌ No se pudo eliminar:\n\n' + (err.message||'Error desconocido') +
+          '\n\n💡 Tip: ve a tu Sheets y borra la fila manualmente si el error persiste.');
   }
 }
 
