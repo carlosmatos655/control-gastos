@@ -1003,6 +1003,7 @@ function goPreview() {
   if (!monto||monto<=0) { alert('Ingresa un monto válido'); return; }
 
   pendingData = {
+    action:      'add',
     fecha:       toSheetDate(fecha),
     descripcion: desc,
     tipo,
