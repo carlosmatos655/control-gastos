@@ -889,7 +889,7 @@ function closeDelModal() {
 
 async function executeDel() {
   if (!pendingDel) return;
-  if (APPS_SCRIPT_URL === 'PEGAR_TU_URL_AQUI') { alert('Configura el APPS_SCRIPT_URL.'); return; }
+  if (!APPS_SCRIPT_URL || !APPS_SCRIPT_URL.includes('script.google.com')) { alert('Configura el APPS_SCRIPT_URL.'); return; }
   const btn = document.getElementById('delBtn');
   btn.disabled = true; btn.textContent = '⏳ Eliminando...';
   try {
@@ -898,14 +898,21 @@ async function executeDel() {
       body: JSON.stringify({action:'delete', ...pendingDel}), redirect:'follow',
     });
     const text = await res.text();
-    let result; try{result=JSON.parse(text);}catch(e){result={status:'ok'};}
-    if(result&&result.status==='error') throw new Error(result.message);
+    // Si no podemos leer la respuesta (CORS opaque) → asumimos fallo, no éxito
+    if (!text) throw new Error('Sin respuesta del servidor. Revisa que el deploy esté activo.');
+    let result;
+    try { result = JSON.parse(text); } catch(e) { throw new Error('Respuesta inválida: ' + text.substring(0, 100)); }
+    if (result && result.status === 'error') throw new Error(result.message);
+
+    // ✅ Éxito confirmado
     closeDelModal();
     showToast('🗑️ Movimiento eliminado del Sheets');
     setTimeout(()=>syncNow(), 1200);
+
   } catch(err) {
-    alert('Error al eliminar: '+(err.message||'Intenta de nuevo'));
     btn.disabled=false; btn.textContent='🗑️ Eliminar';
+    alert('❌ Error al eliminar:\n\n' + (err.message||'Intenta de nuevo') +
+          '\n\n💡 Si el error persiste, elimina la fila directamente desde Google Sheets.');
   }
 }
 
