@@ -110,10 +110,63 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rv{color:var(--red);font-weight:700}.gv{color:var(--green);font-weight:700}
 .tfoot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--muted2)}
 .empty{text-align:center;padding:26px 0;color:var(--muted);font-size:13px}
+/* ── DELETE BUTTON ── */
+.delbtn{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:3px 7px;border-radius:5px;transition:.15s;line-height:1}
+.delbtn:hover{background:rgba(242,95,92,.15);color:var(--red)}
+/* ── DELETE CONFIRM MODAL ── */
+.del-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:300;align-items:center;justify-content:center}
+.del-ov.show{display:flex}
+.del-box{background:#141c2e;border:1px solid var(--border2);border-radius:14px;padding:26px 30px;max-width:360px;width:90%;text-align:center}
+.del-ico{font-size:34px;margin-bottom:10px}
+.del-box h3{font-size:15px;font-weight:700;margin-bottom:10px}
+.del-rows{font-size:12px;text-align:left;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:10px 13px;margin-bottom:12px;line-height:2}
+.del-warn{font-size:11px;color:var(--red);background:rgba(242,95,92,.08);border:1px solid rgba(242,95,92,.25);border-radius:7px;padding:8px 12px;margin-bottom:16px}
+.del-btns{display:flex;gap:8px;justify-content:center}
+.dbc{background:rgba(255,255,255,.06);border:1px solid var(--border2);color:var(--text);padding:8px 18px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;transition:.15s}
+.dbc:hover{background:rgba(255,255,255,.1)}
+.dbr{background:rgba(242,95,92,.12);border:1px solid var(--red);color:var(--red);padding:8px 18px;border-radius:7px;cursor:pointer;font-size:13px;font-weight:700;transition:.15s}
+.dbr:hover{background:rgba(242,95,92,.25)}
+.dbr:disabled{opacity:.4;cursor:not-allowed}
 .footer{text-align:center;font-size:11px;color:var(--muted);padding:6px 0}
 
 @media(max-width:860px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.row-wide,.row-half{grid-template-columns:1fr}}
 @media(max-width:480px){body{padding:10px}.kpi-grid{grid-template-columns:1fr 1fr}.kv{font-size:17px}}
+
+/* ── FAB ── */
+.fab{position:fixed;bottom:24px;right:24px;width:58px;height:58px;background:var(--gold);color:#000;border:none;border-radius:50%;font-size:28px;font-weight:700;cursor:pointer;box-shadow:0 4px 22px rgba(240,180,41,.45);z-index:50;transition:.2s;display:flex;align-items:center;justify-content:center;line-height:1}
+.fab:hover{transform:scale(1.1);box-shadow:0 6px 30px rgba(240,180,41,.55)}
+/* ── FORM OVERLAY ── */
+.form-ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99;transition:.2s}
+.form-ov.show{display:block}
+/* ── FORM PANEL ── */
+.fp{position:fixed;top:0;right:-430px;width:400px;height:100vh;background:var(--card);border-left:1px solid var(--border2);z-index:100;display:flex;flex-direction:column;transition:right .3s cubic-bezier(.4,0,.2,1);overflow:hidden}
+.fp.open{right:0}
+.fp-hdr{display:flex;justify-content:space-between;align-items:center;padding:20px 22px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.fp-ttl{font-size:15px;font-weight:700}
+.fp-x{background:none;border:none;color:var(--muted2);font-size:20px;cursor:pointer;padding:4px;line-height:1;transition:.15s}
+.fp-x:hover{color:var(--text)}
+.fp-body{padding:18px 22px;flex:1;overflow-y:auto}
+.fg{margin-bottom:13px}
+.fl{display:block;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin-bottom:4px}
+.fi,.fs{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--text);padding:9px 12px;border-radius:8px;font-size:13px;outline:none;font-family:inherit;transition:.15s;appearance:none;-webkit-appearance:none}
+.fi:focus,.fs:focus{border-color:var(--gold);background:rgba(255,255,255,.07)}
+.fs option{background:#141c2e}
+.fp-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0}
+.fpb{flex:1;padding:10px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1px solid var(--border2);transition:.15s}
+.fpb-sec{background:rgba(255,255,255,.05);color:var(--muted2)}.fpb-sec:hover{color:var(--text)}
+.fpb-gold{background:rgba(240,180,41,.12);border-color:var(--gold);color:var(--gold)}.fpb-gold:hover{background:rgba(240,180,41,.22)}
+.fpb-green{background:rgba(6,214,160,.12);border-color:var(--green);color:var(--green)}.fpb-green:hover{background:rgba(6,214,160,.22)}
+.fpb:disabled{opacity:.4;cursor:not-allowed}
+/* ── PREVIEW ── */
+.pv-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.pv-row:last-child{border-bottom:none}
+.pv-l{font-size:12px;color:var(--muted2)}
+.pv-r{font-size:13px;font-weight:600;text-align:right}
+/* ── URL WARNING ── */
+.url-warn{background:rgba(242,95,92,.08);border:1px solid rgba(242,95,92,.25);border-radius:8px;padding:10px 13px;font-size:12px;color:var(--red);margin-bottom:14px;line-height:1.6}
+/* ── SUCCESS TOAST ── */
+.toast{position:fixed;bottom:90px;right:24px;background:#1a2540;border:1px solid var(--green);color:var(--green);padding:10px 18px;border-radius:10px;font-size:13px;font-weight:600;z-index:200;opacity:0;transform:translateY(10px);transition:.3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
 </style>
 </head>
 <body>
@@ -224,12 +277,102 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <th onclick="sortBy('medioPago')">Medio de Pago ↕</th>
     <th onclick="sortBy('monto')" style="text-align:right">Monto ↕</th>
     <th style="text-align:center">Reimb.</th>
+    <th style="text-align:center;width:40px"></th>
   </tr></thead><tbody id="tbody"></tbody></table></div>
   <div class="tfoot">
     <span>Total gastos:</span>
     <span id="tTotal" style="font-size:14px;font-weight:800;color:var(--red)">—</span>
   </div>
 </div>
+
+<!-- ─── DELETE CONFIRM MODAL ─── -->
+<div class="del-ov" id="delOv" onclick="if(event.target===this)closeDelModal()">
+  <div class="del-box">
+    <div class="del-ico">🗑️</div>
+    <h3>¿Eliminar movimiento?</h3>
+    <div class="del-rows" id="delRows"></div>
+    <div class="del-warn">⚠️ Esto borrará la fila de tu Google Sheets.<br>No se puede deshacer.</div>
+    <div class="del-btns">
+      <button class="dbc" onclick="closeDelModal()">Cancelar</button>
+      <button class="dbr" id="delBtn" onclick="executeDel()">🗑️ Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── TOAST ─── -->
+<div class="toast" id="toast">✅ Movimiento registrado</div>
+
+<!-- ─── FAB ─── -->
+<button class="fab" onclick="openForm()" title="Registrar movimiento">＋</button>
+
+<!-- ─── FORM OVERLAY ─── -->
+<div class="form-ov" id="formOv" onclick="closeForm()"></div>
+
+<!-- ─── FORM PANEL ─── -->
+<div class="fp" id="fp">
+  <div class="fp-hdr">
+    <span class="fp-ttl" id="fpTitle">✏️ Nuevo Movimiento</span>
+    <button class="fp-x" onclick="closeForm()">✕</button>
+  </div>
+
+  <div class="fp-body">
+    <!-- WARNING if URL not configured -->
+    <div class="url-warn" id="urlWarn" style="display:none">
+      ⚠️ <strong>Apps Script no configurado.</strong><br>
+      Sigue los pasos del archivo <code>apps_script.js</code>, despliega como Web App y pega la URL en la variable <code>APPS_SCRIPT_URL</code> del HTML.
+    </div>
+
+    <!-- STEP 1: EDIT -->
+    <div id="stepEdit">
+      <div class="fg">
+        <label class="fl">📅 Fecha</label>
+        <input type="date" id="fDate" class="fi">
+      </div>
+      <div class="fg">
+        <label class="fl">📝 Descripción *</label>
+        <input type="text" id="fDesc" class="fi" placeholder="Ej: Almuerzo, Pasaje, Sueldo...">
+      </div>
+      <div class="fg">
+        <label class="fl">🏷️ Tipo</label>
+        <select id="fTipo" class="fs" onchange="onTipoChange()">
+          <option value="Variable">Variable</option>
+          <option value="Fijo">Fijo</option>
+          <option value="Ahorro">Ahorro</option>
+          <option value="Ingreso">Ingreso</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">📂 Categoría</label>
+        <select id="fCat" class="fs"></select>
+      </div>
+      <div class="fg">
+        <label class="fl">💳 Medio de Pago</label>
+        <select id="fMedio" class="fs"></select>
+      </div>
+      <div class="fg">
+        <label class="fl">💰 Monto (S/.) *</label>
+        <input type="number" id="fMonto" class="fi" placeholder="0.00" min="0.01" step="0.01">
+      </div>
+      <div class="fg">
+        <label class="fl">↩️ Reembolsable</label>
+        <select id="fReimb" class="fs">
+          <option value="No">No</option>
+          <option value="Sí">Sí</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- STEP 2: PREVIEW -->
+    <div id="stepPreview" style="display:none">
+      <div style="font-size:12px;color:var(--muted2);text-align:center;margin-bottom:14px">Confirma antes de guardar 👇</div>
+      <div id="pvContent"></div>
+    </div>
+  </div>
+
+  <!-- FOOTER BUTTONS (rendered by JS) -->
+  <div class="fp-foot" id="fpFoot"></div>
+</div>
+
 <div class="footer">Fuente: Google Sheets «Control de Gastos Personales» · Sync automática al abrir en navegador</div>
 
 <script>
@@ -517,7 +660,8 @@ function renderTable(){
       <td><span class="bdg ${BC[m.tipo]||''}">${m.tipo}</span></td>
       <td style="font-size:11px;color:var(--muted2)">${m.medioPago}</td>
       <td style="text-align:right" class="${g?'rv':'gv'}">${(g?'- ':'+ ')+'S/.'+m.monto.toFixed(2)}</td>
-      <td style="text-align:center">${rei}</td></tr>`;
+      <td style="text-align:center">${rei}</td>
+      <td style="text-align:center"><button class="delbtn" title="Eliminar movimiento" onclick="confirmDelete('${m.fechaStr}','${m.descripcion.replace(/'/g,String.fromCharCode(39))}','${m.monto}','${m.categoria}','${m.medioPago.replace(/'/g,String.fromCharCode(39))}')">🗑️</button></td></tr>`;
   }).join('');
   const total=sorted.filter(m=>m.tipoMov==='Gasto').reduce((s,m)=>s+m.monto,0);
   document.getElementById('tCount').textContent=sorted.length+' transacción'+(sorted.length!==1?'es':'');
@@ -585,6 +729,212 @@ async function init(){
     // En navegador: sync automática
     await syncNow();
   }
+}
+
+
+// ══ DELETE LOGIC ══════════════════════════════════════════════
+let pendingDel = null;
+
+function confirmDelete(fecha, desc, monto, cat, medio) {
+  pendingDel = { fecha, descripcion:desc, monto:parseFloat(monto), categoria:cat, medioPago:medio };
+  document.getElementById('delRows').innerHTML = `
+    <div><span style="color:var(--muted2)">📅 </span><strong>${fecha}</strong></div>
+    <div><span style="color:var(--muted2)">📝 </span><strong>${desc}</strong></div>
+    <div><span style="color:var(--muted2)">📂 </span><strong>${cat}</strong></div>
+    <div><span style="color:var(--muted2)">💳 </span><strong>${medio}</strong></div>
+    <div><span style="color:var(--muted2)">💰 </span><strong class="rv">- S/.${parseFloat(monto).toFixed(2)}</strong></div>`;
+  const btn = document.getElementById('delBtn');
+  btn.disabled = false;
+  btn.textContent = '🗑️ Eliminar';
+  document.getElementById('delOv').classList.add('show');
+}
+
+function closeDelModal() {
+  document.getElementById('delOv').classList.remove('show');
+  pendingDel = null;
+}
+
+async function executeDel() {
+  if (!pendingDel) return;
+  if (APPS_SCRIPT_URL === 'PEGAR_TU_URL_AQUI') { alert('Configura el APPS_SCRIPT_URL.'); return; }
+  const btn = document.getElementById('delBtn');
+  btn.disabled = true; btn.textContent = '⏳ Eliminando...';
+  try {
+    const res = await fetch(APPS_SCRIPT_URL, {
+      method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body: JSON.stringify({action:'delete', ...pendingDel}), redirect:'follow',
+    });
+    const text = await res.text();
+    let result; try{result=JSON.parse(text);}catch(e){result={status:'ok'};}
+    if(result&&result.status==='error') throw new Error(result.message);
+    closeDelModal();
+    showToast('🗑️ Movimiento eliminado del Sheets');
+    setTimeout(()=>syncNow(), 1200);
+  } catch(err) {
+    alert('Error al eliminar: '+(err.message||'Intenta de nuevo'));
+    btn.disabled=false; btn.textContent='🗑️ Eliminar';
+  }
+}
+
+// ══ APPS SCRIPT CONFIG ══════════════════════════════════
+// PASO 1: En tu Google Sheets → Extensiones → Apps Script
+// PASO 2: Pega el código del archivo apps_script.js
+// PASO 3: Implementar → Nueva implementación → App web → Cualquier usuario
+// PASO 4: Copia la URL y pégala aquí abajo:
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzPOYjlUk49DGGDht-TCz51C3TZOf63JfneEeCWgbc_1NjXL3G8qdfWYWvdPRXQqV0dZA/exec';
+
+// ══ FORM STATE ═══════════════════════════════════════════
+let currentStep = 'edit';
+let pendingData  = {};
+
+function openForm() {
+  buildSelects();
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('fDate').value = today;
+  document.getElementById('fDesc').value = '';
+  document.getElementById('fTipo').value = 'Variable';
+  document.getElementById('fMonto').value = '';
+  document.getElementById('fReimb').value = 'No';
+  onTipoChange();
+  setStep('edit');
+  document.getElementById('fp').classList.add('open');
+  document.getElementById('formOv').classList.add('show');
+  // Warn if URL not set
+  document.getElementById('urlWarn').style.display =
+    APPS_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbzPOYjlUk49DGGDht-TCz51C3TZOf63JfneEeCWgbc_1NjXL3G8qdfWYWvdPRXQqV0dZA/exec' ? '' : 'none';
+}
+
+function closeForm() {
+  document.getElementById('fp').classList.remove('open');
+  document.getElementById('formOv').classList.remove('show');
+}
+
+function buildSelects() {
+  // Categorías (solo PEN)
+  const catSel = document.getElementById('fCat');
+  catSel.innerHTML = '';
+  state.presupuesto.filter(p=>p.moneda==='PEN').forEach(p=>{
+    const o=document.createElement('option');o.value=p.categoria;o.text=p.categoria;catSel.appendChild(o);
+  });
+  // Medios de pago
+  const medSel = document.getElementById('fMedio');
+  medSel.innerHTML = '';
+  state.cuentas.filter(c=>c.moneda==='PEN').forEach(c=>{
+    const o=document.createElement('option');o.value=c.nombre;o.text=c.nombre+' ('+c.tipo+')';medSel.appendChild(o);
+  });
+}
+
+function onTipoChange() {
+  // Cuando es Ingreso, pre-selecciona categoría compatible
+  const tipo = document.getElementById('fTipo').value;
+  if (tipo === 'Ingreso') {
+    const catSel = document.getElementById('fCat');
+    const opt = [...catSel.options].find(o=>o.value.toLowerCase().includes('ingreso')||o.value.toLowerCase().includes('sueldo'));
+    if(opt) catSel.value = opt.value;
+  }
+}
+
+function setStep(step) {
+  currentStep = step;
+  document.getElementById('stepEdit').style.display    = step==='edit'    ? '' : 'none';
+  document.getElementById('stepPreview').style.display = step==='preview' ? '' : 'none';
+  document.getElementById('fpTitle').textContent =
+    step==='edit' ? '✏️ Nuevo Movimiento' : '👁 Confirmar Movimiento';
+  renderFormFooter();
+}
+
+function renderFormFooter() {
+  const foot = document.getElementById('fpFoot');
+  if (currentStep === 'edit') {
+    foot.innerHTML = `
+      <button class="fpb fpb-sec" onclick="closeForm()">Cancelar</button>
+      <button class="fpb fpb-gold" onclick="goPreview()">👁 Vista Previa →</button>`;
+  } else {
+    foot.innerHTML = `
+      <button class="fpb fpb-sec" onclick="setStep('edit')">← Editar</button>
+      <button class="fpb fpb-green" id="submitBtn" onclick="submitMov()">✅ Registrar</button>`;
+  }
+}
+
+function goPreview() {
+  const fecha = document.getElementById('fDate').value;
+  const desc  = document.getElementById('fDesc').value.trim();
+  const tipo  = document.getElementById('fTipo').value;
+  const cat   = document.getElementById('fCat').value;
+  const medio = document.getElementById('fMedio').value;
+  const monto = parseFloat(document.getElementById('fMonto').value);
+  const reimb = document.getElementById('fReimb').value;
+
+  if (!fecha)       { alert('Selecciona una fecha');       return; }
+  if (!desc)        { alert('Escribe una descripción');    return; }
+  if (!monto||monto<=0) { alert('Ingresa un monto válido'); return; }
+
+  pendingData = {
+    fecha:       toSheetDate(fecha),
+    descripcion: desc,
+    tipo,
+    categoria:   cat,
+    medioPago:   medio,
+    monto:       monto.toFixed(2),
+    reembolsable:reimb,
+  };
+
+  const isG = tipo !== 'Ingreso';
+  const BC  = {Variable:'bv',Fijo:'bf',Ahorro:'ba',Ingreso:'bi'};
+  document.getElementById('pvContent').innerHTML = `
+    <div class="pv-row"><span class="pv-l">📅 Fecha</span>       <span class="pv-r">${pendingData.fecha}</span></div>
+    <div class="pv-row"><span class="pv-l">📝 Descripción</span> <span class="pv-r">${pendingData.descripcion}</span></div>
+    <div class="pv-row"><span class="pv-l">🏷️ Tipo</span>        <span class="pv-r"><span class="bdg ${BC[tipo]||''}">${tipo}</span></span></div>
+    <div class="pv-row"><span class="pv-l">📂 Categoría</span>   <span class="pv-r">${pendingData.categoria}</span></div>
+    <div class="pv-row"><span class="pv-l">💳 Medio de Pago</span><span class="pv-r">${pendingData.medioPago}</span></div>
+    <div class="pv-row"><span class="pv-l">💰 Monto</span>        <span class="pv-r ${isG?'rv':'gv'}">${isG?'- ':'+ '}S/.${parseFloat(pendingData.monto).toFixed(2)}</span></div>
+    <div class="pv-row"><span class="pv-l">↩️ Reembolsable</span><span class="pv-r">${pendingData.reembolsable}</span></div>`;
+  setStep('preview');
+}
+
+async function submitMov() {
+  if (APPS_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbzPOYjlUk49DGGDht-TCz51C3TZOf63JfneEeCWgbc_1NjXL3G8qdfWYWvdPRXQqV0dZA/exec') {
+    alert('⚠️ Configura el APPS_SCRIPT_URL primero.\n\nExtensiones → Apps Script → Deploy → Web App → copia la URL.');
+    return;
+  }
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Guardando...';
+
+  try {
+    const res  = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body:    JSON.stringify(pendingData),
+      redirect:'follow',
+    });
+    const text = await res.text();
+    let result;
+    try { result = JSON.parse(text); } catch(e) { result = {status:'ok'}; }
+    if (result && result.status === 'error') throw new Error(result.message);
+
+    // ✅ Éxito
+    closeForm();
+    showToast('✅ ' + (pendingData.tipo==='Ingreso'?'Ingreso':'Gasto') + ' guardado en tu Sheets');
+    setTimeout(()=>syncNow(), 1200); // re-sync para reflejar el nuevo movimiento
+
+  } catch(err) {
+    alert('Error al guardar: ' + (err.message || 'Revisa tu conexión e intenta de nuevo'));
+    btn.disabled = false;
+    btn.textContent = '✅ Registrar';
+  }
+}
+
+function toSheetDate(iso) {
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3500);
 }
 
 init();
