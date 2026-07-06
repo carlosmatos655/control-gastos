@@ -188,6 +188,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .pill{background:#1a2540 !important;border:1px solid var(--border2) !important;color:var(--text) !important;padding:6px 28px 6px 11px !important;border-radius:7px;font-size:12px;cursor:pointer;outline:none;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%238a9bbf' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E") !important;background-repeat:no-repeat !important;background-position:right 10px center !important;font-family:inherit}
 .pill:focus{border-color:var(--gold) !important;outline:none}
 .pill option{background:#1a2540;color:#e8edf5;padding:6px}
+/* 📱 MOBILE: form full-screen + FAB más grande */
+@media(max-width:480px){
+  .fp{width:100vw;right:-100vw}
+  .fab{width:62px;height:62px;font-size:30px;right:16px;bottom:18px}
+  .fp-body{padding:16px 18px}
+}
 </style>
 </head>
 <body>
@@ -311,7 +317,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <th style="text-align:center;width:40px"></th>
   </tr></thead><tbody id="tbody"></tbody></table></div>
   <div class="tfoot">
-    <span>Total gastos:</span>
+    <span>Balance del período:</span>
     <span id="tTotal" style="font-size:14px;font-weight:800;color:var(--red)">—</span>
   </div>
 </div>
@@ -382,7 +388,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
       </div>
       <div class="fg">
         <label class="fl">💰 Monto (S/.) *</label>
-        <input type="number" id="fMonto" class="fi" placeholder="0.00" min="0.01" step="0.01">
+        <input type="number" inputmode="decimal" id="fMonto" class="fi" placeholder="0.00" min="0.01" step="0.01">
       </div>
       <div class="fg">
         <label class="fl">↩️ Reembolsable</label>
@@ -685,7 +691,8 @@ function renderTable(){
     return;
   }
   const BC={Fijo:'bf',Variable:'bv',Ahorro:'ba',Ingreso:'bi'};
-  tbody.innerHTML=sorted.map(m=>{
+  window._tableRows = sorted;
+  tbody.innerHTML=sorted.map((m,i)=>{
     const g=m.tipoMov==='Gasto';
     const rei=m.reembolsable==='Sí'?`<span style="color:var(--green)">✓</span>`:`<span style="color:var(--muted)">–</span>`;
     return `<tr><td style="color:var(--muted2)">${m.fechaStr}</td><td>${m.descripcion}</td><td>${m.categoria}</td>
@@ -693,11 +700,13 @@ function renderTable(){
       <td style="font-size:11px;color:var(--muted2)">${m.medioPago}</td>
       <td style="text-align:right" class="${g?'rv':'gv'}">${(g?'- ':'+ ')+'S/.'+m.monto.toFixed(2)}</td>
       <td style="text-align:center">${rei}</td>
-      <td style="text-align:center"><button class="delbtn" title="Eliminar movimiento" onclick="confirmDelete('${m.fechaStr}','${m.descripcion.replace(/'/g,String.fromCharCode(39))}','${m.monto}','${m.categoria}','${m.medioPago.replace(/'/g,String.fromCharCode(39))}')">🗑️</button></td></tr>`;
+      <td style="text-align:center;white-space:nowrap"><button class="delbtn" title="Editar" onclick="openEdit(${i})">✏️</button><button class="delbtn" title="Eliminar" onclick="confirmDeleteIdx(${i})">🗑️</button></td></tr>`;
   }).join('');
-  const total=sorted.filter(m=>m.tipoMov==='Gasto').reduce((s,m)=>s+m.monto,0);
+  const tg=sorted.filter(m=>m.tipoMov==='Gasto').reduce((s,m)=>s+m.monto,0);
+  const ti=sorted.filter(m=>m.tipoMov==='Ingreso').reduce((s,m)=>s+m.monto,0);
+  const neto=ti-tg;
   document.getElementById('tCount').textContent=sorted.length+' transacción'+(sorted.length!==1?'es':'');
-  document.getElementById('tTotal').textContent='- S/.'+total.toFixed(2);
+  document.getElementById('tTotal').innerHTML=`<span style="color:var(--red)">-S/.${tg.toFixed(2)}</span> <span style="color:var(--muted)">·</span> <span style="color:var(--green)">+S/.${ti.toFixed(2)}</span> <span style="color:var(--muted)">· Neto</span> <span style="color:${neto>=0?'var(--green)':'var(--red)'}">${neto>=0?'+':''}S/.${neto.toFixed(2)}</span>`;
 }
 
 function renderAll(){renderKPIs();renderCatChart();renderMedioChart();renderDisp();renderCredDetail();renderTable();}
@@ -934,8 +943,10 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzPOYjlUk49DGGD
 // ══ FORM STATE ═══════════════════════════════════════════
 let currentStep = 'edit';
 let pendingData  = {};
+let editingOriginal = null; // si != null, el form está en modo edición
 
 function openForm() {
+  editingOriginal = null;
   buildSelects();
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('fDate').value = today;
@@ -943,6 +954,12 @@ function openForm() {
   document.getElementById('fTipo').value = 'Variable';
   document.getElementById('fMonto').value = '';
   document.getElementById('fReimb').value = 'No';
+  // 📱 Recordar última categoría y medio de pago usados (gestión rápida)
+  try{
+    const lc=localStorage.getItem('cg_lastCat'), lm=localStorage.getItem('cg_lastMedio');
+    if(lc){ensureOpt('fCat',lc);document.getElementById('fCat').value=lc;}
+    if(lm){ensureOpt('fMedio',lm);document.getElementById('fMedio').value=lm;}
+  }catch(e){}
   onTipoChange();
   setStep('edit');
   document.getElementById('fp').classList.add('open');
@@ -987,7 +1004,8 @@ function setStep(step) {
   document.getElementById('stepEdit').style.display    = step==='edit'    ? '' : 'none';
   document.getElementById('stepPreview').style.display = step==='preview' ? '' : 'none';
   document.getElementById('fpTitle').textContent =
-    step==='edit' ? '✏️ Nuevo Movimiento' : '👁 Confirmar Movimiento';
+    step==='edit' ? (editingOriginal?'✏️ Editar Movimiento':'✏️ Nuevo Movimiento')
+                  : (editingOriginal?'👁 Confirmar Cambios':'👁 Confirmar Movimiento');
   renderFormFooter();
 }
 
@@ -1000,7 +1018,7 @@ function renderFormFooter() {
   } else {
     foot.innerHTML = `
       <button class="fpb fpb-sec" onclick="setStep('edit')">← Editar</button>
-      <button class="fpb fpb-green" id="submitBtn" onclick="submitMov()">✅ Registrar</button>`;
+      <button class="fpb fpb-green" id="submitBtn" onclick="submitMov()">${editingOriginal?'💾 Guardar Cambios':'✅ Registrar'}</button>`;
   }
 }
 
@@ -1043,7 +1061,7 @@ function goPreview() {
 
 async function submitMov() {
   if (!APPS_SCRIPT_URL || !APPS_SCRIPT_URL.includes('script.google.com')) {
-    alert('⚠️ Configura el APPS_SCRIPT_URL primero.\n\nExtensiones → Apps Script → Deploy → Web App → copia la URL.');
+    alert('⚠️ Configura el APPS_SCRIPT_URL primero.');
     return;
   }
   const btn = document.getElementById('submitBtn');
@@ -1051,27 +1069,92 @@ async function submitMov() {
   btn.textContent = '⏳ Guardando...';
 
   try {
-    const res  = await fetch(APPS_SCRIPT_URL, {
-      method: 'POST',
-      headers: {'Content-Type': 'text/plain;charset=utf-8'},
-      body:    JSON.stringify(pendingData),
-      redirect:'follow',
-    });
-    const text = await res.text();
+    let text;
+    if (editingOriginal) {
+      // ✏️ EDITAR → GET con valores originales + nuevos
+      const qs = new URLSearchParams({
+        action:          'edit',
+        old_fecha:       editingOriginal.fecha,
+        old_descripcion: editingOriginal.descripcion,
+        old_monto:       String(editingOriginal.monto),
+        old_categoria:   editingOriginal.categoria,
+        fecha:           pendingData.fecha,
+        descripcion:     pendingData.descripcion,
+        tipo:            pendingData.tipo,
+        categoria:       pendingData.categoria,
+        medioPago:       pendingData.medioPago,
+        monto:           pendingData.monto,
+        reembolsable:    pendingData.reembolsable,
+      });
+      const res = await fetch(`${APPS_SCRIPT_URL}?${qs.toString()}`);
+      text = await res.text();
+    } else {
+      // ➕ AGREGAR → POST
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify(pendingData), redirect:'follow',
+      });
+      text = await res.text();
+    }
+
+    if (!text) throw new Error('Sin respuesta del servidor.');
     let result;
-    try { result = JSON.parse(text); } catch(e) { result = {status:'ok'}; }
+    try { result = JSON.parse(text); } catch(e) { throw new Error('Respuesta inesperada: '+text.substring(0,120)); }
     if (result && result.status === 'error') throw new Error(result.message);
 
-    // ✅ Éxito
+    // 📱 Recordar selección para el próximo registro rápido
+    try{
+      localStorage.setItem('cg_lastCat',   pendingData.categoria);
+      localStorage.setItem('cg_lastMedio', pendingData.medioPago);
+    }catch(e){}
+
+    const wasEdit = !!editingOriginal;
     closeForm();
-    showToast('✅ ' + (pendingData.tipo==='Ingreso'?'Ingreso':'Gasto') + ' guardado en tu Sheets');
-    setTimeout(()=>syncNow(), 1200); // re-sync para reflejar el nuevo movimiento
+    showToast(wasEdit ? '💾 Movimiento actualizado'
+                      : ('✅ ' + (pendingData.tipo==='Ingreso'?'Ingreso':'Gasto') + ' guardado en tu Sheets'));
+    setTimeout(()=>syncNow(), 1500);
 
   } catch(err) {
-    alert('Error al guardar: ' + (err.message || 'Revisa tu conexión e intenta de nuevo'));
     btn.disabled = false;
-    btn.textContent = '✅ Registrar';
+    btn.textContent = editingOriginal ? '💾 Guardar Cambios' : '✅ Registrar';
+    alert('❌ Error al guardar:\n\n' + (err.message || 'Revisa tu conexión'));
   }
+}
+
+// ══ EDICIÓN DE MOVIMIENTOS ═══════════════════════════════════
+function confirmDeleteIdx(i){
+  const m=window._tableRows[i];
+  if(!m)return;
+  confirmDelete(m.fechaStr,m.descripcion,m.monto,m.categoria,m.medioPago);
+}
+
+function ensureOpt(selId,val){
+  if(!val)return;
+  const sel=document.getElementById(selId);
+  if(sel && ![...sel.options].some(o=>o.value===val)){
+    const o=document.createElement('option');o.value=val;o.text=val;sel.appendChild(o);
+  }
+}
+
+function openEdit(i){
+  const m=window._tableRows[i];
+  if(!m)return;
+  buildSelects();
+  ensureOpt('fCat',m.categoria);
+  ensureOpt('fMedio',m.medioPago);
+  const p=m.fechaStr.split('/');
+  document.getElementById('fDate').value=`${p[2]}-${p[1]}-${p[0]}`;
+  document.getElementById('fDesc').value=m.descripcion;
+  document.getElementById('fTipo').value=m.tipo||'Variable';
+  document.getElementById('fCat').value=m.categoria;
+  document.getElementById('fMedio').value=m.medioPago;
+  document.getElementById('fMonto').value=m.monto;
+  document.getElementById('fReimb').value=m.reembolsable==='Sí'?'Sí':'No';
+  editingOriginal={fecha:m.fechaStr,descripcion:m.descripcion,monto:m.monto,categoria:m.categoria};
+  setStep('edit');
+  document.getElementById('fp').classList.add('open');
+  document.getElementById('formOv').classList.add('show');
+  document.getElementById('urlWarn').style.display=(!APPS_SCRIPT_URL||!APPS_SCRIPT_URL.includes('script.google.com'))?'':'none';
 }
 
 function toSheetDate(iso) {
