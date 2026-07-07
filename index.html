@@ -194,6 +194,21 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .fab{width:62px;height:62px;font-size:30px;right:16px;bottom:18px}
   .fp-body{padding:16px 18px}
 }
+
+/* ── CUSTOM ACCOUNT DROPDOWN (medio de pago) ── */
+.acc-sel-wrap{position:relative}
+.acc-sel-btn{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--text);padding:9px 12px;border-radius:8px;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:inherit;transition:.15s}
+.acc-sel-btn:hover{border-color:var(--gold)}
+.acc-sel-label{display:flex;align-items:center;gap:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acc-sel-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.acc-sel-drop{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:#1a2540;border:1px solid var(--border2);border-radius:10px;z-index:600;box-shadow:0 10px 34px rgba(0,0,0,.55);max-height:320px;overflow-y:auto}
+.acc-sel-drop.open{display:block}
+.acc-sel-group-lbl{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--muted);padding:10px 14px 6px;background:#1a2540;position:sticky;top:0}
+.acc-sel-opt{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;font-size:13px;color:var(--muted2);transition:.15s}
+.acc-sel-opt:hover{background:rgba(255,255,255,.06);color:var(--text)}
+.acc-sel-opt.sel{background:rgba(240,180,41,.1);color:var(--text)}
+.acc-sel-opt .acc-sel-dot{width:10px;height:10px}
+.acc-sel-check{margin-left:auto;color:var(--gold);font-weight:900;font-size:12px}
 </style>
 </head>
 <body>
@@ -384,7 +399,14 @@ tr:hover td{background:rgba(255,255,255,.02)}
       </div>
       <div class="fg">
         <label class="fl">💳 Medio de Pago</label>
-        <select id="fMedio" class="fs"></select>
+        <input type="hidden" id="fMedio">
+        <div class="acc-sel-wrap" id="fMedioWrap">
+          <button type="button" class="acc-sel-btn" id="fMedioBtn" onclick="toggleMedioDrop(event)">
+            <span class="acc-sel-label" id="fMedioLabel">Selecciona una cuenta</span>
+            <span class="ms-arrow">▾</span>
+          </button>
+          <div class="acc-sel-drop" id="fMedioDrop"></div>
+        </div>
       </div>
       <div class="fg">
         <label class="fl">💰 Monto (S/.) *</label>
@@ -958,7 +980,13 @@ function openForm() {
   try{
     const lc=localStorage.getItem('cg_lastCat'), lm=localStorage.getItem('cg_lastMedio');
     if(lc){ensureOpt('fCat',lc);document.getElementById('fCat').value=lc;}
-    if(lm){ensureOpt('fMedio',lm);document.getElementById('fMedio').value=lm;}
+    if(lm){
+      const cta=state.cuentas.find(c=>c.nombre===lm);
+      selectMedio(lm, cta?cta.color:'#888');
+    } else {
+      document.getElementById('fMedioLabel').textContent='Selecciona una cuenta';
+      document.getElementById('fMedio').value='';
+    }
   }catch(e){}
   onTipoChange();
   setStep('edit');
@@ -981,13 +1009,55 @@ function buildSelects() {
   state.presupuesto.filter(p=>p.moneda==='PEN').forEach(p=>{
     const o=document.createElement('option');o.value=p.categoria;o.text=p.categoria;catSel.appendChild(o);
   });
-  // Medios de pago
-  const medSel = document.getElementById('fMedio');
-  medSel.innerHTML = '';
-  state.cuentas.filter(c=>c.moneda==='PEN').forEach(c=>{
-    const o=document.createElement('option');o.value=c.nombre;o.text=c.nombre+' ('+c.tipo+')';medSel.appendChild(o);
+  buildMedioDropdown();
+}
+
+// ══ CUSTOM MEDIO DE PAGO DROPDOWN (con color + agrupado por tipo) ══
+const TIPO_ICONS = { 'Crédito':'💳', 'Débito':'🏧', 'Ahorro':'🐷' };
+const TIPO_ORDER  = ['Débito','Crédito','Ahorro'];
+
+function buildMedioDropdown(){
+  const drop = document.getElementById('fMedioDrop');
+  drop.innerHTML = '';
+  const cuentas = state.cuentas.filter(c=>c.moneda==='PEN');
+  const grupos = {};
+  cuentas.forEach(c=>{ (grupos[c.tipo]=grupos[c.tipo]||[]).push(c); });
+
+  TIPO_ORDER.filter(t=>grupos[t]).forEach(tipo=>{
+    const lbl=document.createElement('div');
+    lbl.className='acc-sel-group-lbl';
+    lbl.textContent=(TIPO_ICONS[tipo]||'💰')+' '+tipo;
+    drop.appendChild(lbl);
+    grupos[tipo].forEach(c=>{
+      const opt=document.createElement('div');
+      opt.className='acc-sel-opt';
+      opt.innerHTML=`<span class="acc-sel-dot" style="background:${c.color}"></span><span>${c.nombre}</span>`;
+      opt.onclick=()=>selectMedio(c.nombre,c.color);
+      drop.appendChild(opt);
+    });
   });
 }
+
+function selectMedio(nombre,color){
+  document.getElementById('fMedio').value = nombre;
+  document.getElementById('fMedioLabel').innerHTML =
+    `<span class="acc-sel-dot" style="background:${color||'#888'}"></span><span>${nombre}</span>`;
+  document.getElementById('fMedioDrop').classList.remove('open');
+  // marcar seleccionado visualmente
+  document.querySelectorAll('#fMedioDrop .acc-sel-opt').forEach(o=>{
+    o.classList.toggle('sel', o.textContent.trim()===nombre);
+  });
+}
+
+function toggleMedioDrop(e){
+  e.stopPropagation();
+  document.getElementById('fMedioDrop').classList.toggle('open');
+}
+
+document.addEventListener('click', e=>{
+  const wrap=document.getElementById('fMedioWrap');
+  if(wrap && !wrap.contains(e.target)) document.getElementById('fMedioDrop').classList.remove('open');
+});
 
 function onTipoChange() {
   // Cuando es Ingreso, pre-selecciona categoría compatible
@@ -1141,13 +1211,13 @@ function openEdit(i){
   if(!m)return;
   buildSelects();
   ensureOpt('fCat',m.categoria);
-  ensureOpt('fMedio',m.medioPago);
   const p=m.fechaStr.split('/');
   document.getElementById('fDate').value=`${p[2]}-${p[1]}-${p[0]}`;
   document.getElementById('fDesc').value=m.descripcion;
   document.getElementById('fTipo').value=m.tipo||'Variable';
   document.getElementById('fCat').value=m.categoria;
-  document.getElementById('fMedio').value=m.medioPago;
+  const cta = state.cuentas.find(c=>c.nombre===m.medioPago);
+  selectMedio(m.medioPago, cta?cta.color:'#888');
   document.getElementById('fMonto').value=m.monto;
   document.getElementById('fReimb').value=m.reembolsable==='Sí'?'Sí':'No';
   editingOriginal={fecha:m.fechaStr,descripcion:m.descripcion,monto:m.monto,categoria:m.categoria};
