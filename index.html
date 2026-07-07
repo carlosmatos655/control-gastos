@@ -748,8 +748,14 @@ function setTFilter(t,btn){document.querySelectorAll('.fb').forEach(b=>b.classLi
 function sortBy(k){if(sortKey===k)sortDir*=-1;else{sortKey=k;sortDir=1;}renderTable();}
 function populateCatSelect(){
   const sel=document.getElementById('selCat');
-  const ex=new Set([...sel.options].map(o=>o.value));
-  [...new Set(state.movimientos.map(m=>m.categoria))].forEach(c=>{if(!ex.has(c)){const o=document.createElement('option');o.value=c;o.text=c;sel.appendChild(o);}});
+  const current=sel.value;
+  // Unión: categorías del Presupuesto (PEN) + cualquier categoría usada en movimientos
+  const presCats = state.presupuesto.filter(p=>p.moneda==='PEN').map(p=>p.categoria);
+  const movCats  = state.movimientos.map(m=>m.categoria);
+  const all = [...new Set([...presCats, ...movCats])].sort((a,b)=>a.localeCompare(b,'es'));
+  sel.innerHTML = '<option value="all">Todas las categorías</option>';
+  all.forEach(c=>{const o=document.createElement('option');o.value=c;o.text=c;sel.appendChild(o);});
+  if([...sel.options].some(o=>o.value===current)) sel.value=current;
 }
 
 // ══ MULTI-SELECT MESES ═══════════════════════════════════════
@@ -1003,12 +1009,15 @@ function closeForm() {
 }
 
 function buildSelects() {
-  // Categorías (solo PEN)
+  // Categorías (solo PEN) — orden alfabético
   const catSel = document.getElementById('fCat');
   catSel.innerHTML = '';
-  state.presupuesto.filter(p=>p.moneda==='PEN').forEach(p=>{
-    const o=document.createElement('option');o.value=p.categoria;o.text=p.categoria;catSel.appendChild(o);
-  });
+  state.presupuesto.filter(p=>p.moneda==='PEN')
+    .map(p=>p.categoria)
+    .sort((a,b)=>a.localeCompare(b,'es'))
+    .forEach(c=>{
+      const o=document.createElement('option');o.value=c;o.text=c;catSel.appendChild(o);
+    });
   buildMedioDropdown();
 }
 
