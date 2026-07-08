@@ -110,6 +110,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .rv{color:var(--red);font-weight:700}.gv{color:var(--green);font-weight:700}
 .tfoot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--muted2)}
 .empty{text-align:center;padding:26px 0;color:var(--muted);font-size:13px}
+/* 💱 CURRENCY TOGGLE (PEN/USD) en el formulario */
+.cur-toggle{display:flex;gap:6px;margin-bottom:8px}
+.cur-btn{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border2);color:var(--muted2);padding:7px 0;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;font-family:inherit}
+.cur-btn:hover{color:var(--text)}
+.cur-btn.active{background:rgba(240,180,41,.15);border-color:var(--gold);color:var(--gold)}
+.usd-tag{font-size:9px;font-weight:700;color:var(--gold);background:rgba(240,180,41,.12);padding:1px 5px;border-radius:4px;margin-left:6px}
 /* ── DELETE BUTTON ── */
 .delbtn{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:3px 7px;border-radius:5px;transition:.15s;line-height:1}
 .delbtn:hover{background:rgba(242,95,92,.15);color:var(--red)}
@@ -300,10 +306,10 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <div class="cs">Consumo acumulado en el ciclo</div>
     <div id="credDetail"></div>
     <div class="divider"></div>
-    <div class="ct" style="margin-bottom:3px">📱 Suscripciones USD</div>
-    <div class="cs">Fijos mensuales en dólares</div>
+    <div class="ct" style="margin-bottom:3px">💵 Gastos en USD</div>
+    <div class="cs">Movimientos en dólares del período</div>
     <div id="subsList"></div>
-    <div style="text-align:right;margin-top:7px;font-size:12px;color:var(--muted2)">Total USD fijo: <strong style="color:var(--red)">$33.10/mes</strong></div>
+    <div id="usdBudgetLine" style="text-align:right;margin-top:9px;font-size:11px;color:var(--muted2)"></div>
   </div>
 </div>
 
@@ -409,7 +415,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
         </div>
       </div>
       <div class="fg">
-        <label class="fl">💰 Monto (S/.) *</label>
+        <label class="fl">💰 Monto <span id="fMontoMonedaLabel">(S/.)</span> *</label>
+        <div class="cur-toggle" id="curToggle">
+          <button type="button" class="cur-btn active" data-mon="PEN" onclick="setFormMoneda('PEN')">🇵🇪 S/.</button>
+          <button type="button" class="cur-btn" data-mon="USD" onclick="setFormMoneda('USD')">🇺🇸 $</button>
+        </div>
         <input type="number" inputmode="decimal" id="fMonto" class="fi" placeholder="0.00" min="0.01" step="0.01">
       </div>
       <div class="fg">
@@ -538,7 +548,8 @@ function parseMovimientos(rows){
     let tipoMov='Gasto';
     if(tipo.toLowerCase()==='ingreso')tipoMov='Ingreso';
     else if(cat.toLowerCase().includes('ahorro')||tipo.toLowerCase()==='ahorro')tipoMov='Ahorro';
-    return{fechaStr:r[0],fechaTs:parseFecha(r[0]),descripcion:r[1]||'',tipo,categoria:cat,medioPago:r[4]||'',monto,reembolsable:r[6]||'No',tipoMov};
+    const moneda = String(r[7]||'').trim().toUpperCase()==='USD' ? 'USD' : 'PEN';
+    return{fechaStr:r[0],fechaTs:parseFecha(r[0]),descripcion:r[1]||'',tipo,categoria:cat,medioPago:r[4]||'',monto,reembolsable:r[6]||'No',tipoMov,moneda};
   }).filter(m=>m.monto>0);
 }
 
@@ -612,7 +623,7 @@ async function syncNow(){
 
 // ══ RENDER ════════════════════════════════════════════════
 function renderKPIs(){
-  const gastos=filteredMovs.filter(m=>m.tipoMov==='Gasto').reduce((s,m)=>s+m.monto,0);
+  const gastos=filteredMovs.filter(m=>m.tipoMov==='Gasto'&&(m.moneda||'PEN')==='PEN').reduce((s,m)=>s+m.monto,0);
   const totalP=state.presupuesto.filter(p=>p.moneda==='PEN').reduce((s,p)=>s+p.presupuesto,0);
   const pct=totalP>0?gastos/totalP*100:0;
   const liq=state.cuentas.filter(c=>c.moneda==='PEN'&&(c.tipo==='Débito'||c.tipo==='Ahorro')).reduce((s,c)=>s+c.disponible,0);
@@ -629,7 +640,7 @@ function renderKPIs(){
 
 function renderCatChart(){
   const map={};
-  filteredMovs.filter(m=>m.tipoMov==='Gasto').forEach(m=>{map[m.categoria]=(map[m.categoria]||0)+m.monto;});
+  filteredMovs.filter(m=>m.tipoMov==='Gasto'&&(m.moneda||'PEN')==='PEN').forEach(m=>{map[m.categoria]=(map[m.categoria]||0)+m.monto;});
   const sorted=Object.entries(map).sort((a,b)=>b[1]-a[1]);
   const PAL=['#f0b429','#f25f5c','#4dabf7','#06d6a0','#be8cf8','#fb923c','#2dd4bf'];
   const canvas=document.getElementById('chartCat');
@@ -648,7 +659,7 @@ function renderCatChart(){
 
 function renderMedioChart(){
   const map={};
-  filteredMovs.filter(m=>m.tipoMov==='Gasto').forEach(m=>{map[m.medioPago]=(map[m.medioPago]||0)+m.monto;});
+  filteredMovs.filter(m=>m.tipoMov==='Gasto'&&(m.moneda||'PEN')==='PEN').forEach(m=>{map[m.medioPago]=(map[m.medioPago]||0)+m.monto;});
   const labels=Object.keys(map),values=Object.values(map);
   const PAL=['#4dabf7','#be8cf8','#06d6a0','#f0b429','#f25f5c','#fb923c'];
   const canvas=document.getElementById('chartMedio');
@@ -694,8 +705,24 @@ function renderCredDetail(){
       <div><div class="cr-meta">S/.${c.gastoAcum.toFixed(2)} usado</div><div class="cr-pct">${pct}% de S/.${fmtNum(c.lineaTotal)}</div></div>
     </div><div class="cr-trk"><div class="cr-fill" style="width:${Math.max(pct,.2)}%;background:linear-gradient(90deg,var(--green),${c.color})"></div></div></div>`;
   }).join('');
-  const SUBS=[{nombre:'Apple Music',monto:9.50},{nombre:'Claude AI',monto:23.60}];
-  document.getElementById('subsList').innerHTML=SUBS.map(s=>`<div class="sub-row"><div><div class="sub-n">${s.nombre}</div><div class="sub-t">Fijo mensual</div></div><div class="sub-v">-$${s.monto.toFixed(2)}</div></div>`).join('');
+
+  // 💵 Gastos en USD — dinámico, desde movimientos reales (respeta filtro de mes/categoría)
+  const usdMovs = filteredMovs.filter(m=>m.tipoMov==='Gasto'&&(m.moneda||'PEN')==='USD')
+                              .sort((a,b)=>b.fechaTs-a.fechaTs);
+  const subsList = document.getElementById('subsList');
+  if(!usdMovs.length){
+    subsList.innerHTML = '<div class="empty" style="padding:10px 0">Sin gastos en USD este período</div>';
+  } else {
+    subsList.innerHTML = usdMovs.map(m=>`
+      <div class="sub-row">
+        <div><div class="sub-n">${m.descripcion}</div><div class="sub-t">${m.fechaStr} · ${m.categoria}</div></div>
+        <div class="sub-v">-$${m.monto.toFixed(2)}</div>
+      </div>`).join('');
+  }
+  const totalUsdGasto = usdMovs.reduce((s,m)=>s+m.monto,0);
+  const totalUsdPres  = state.presupuesto.filter(p=>p.moneda==='USD').reduce((s,p)=>s+p.presupuesto,0);
+  document.getElementById('usdBudgetLine').innerHTML =
+    `Presupuestado: <strong>$${totalUsdPres.toFixed(2)}</strong> · Gastado: <strong style="color:var(--red)">$${totalUsdGasto.toFixed(2)}</strong> · Disponible: <strong style="color:var(--green)">$${(totalUsdPres-totalUsdGasto).toFixed(2)}</strong>`;
 }
 
 function renderTable(){
@@ -716,19 +743,27 @@ function renderTable(){
   window._tableRows = sorted;
   tbody.innerHTML=sorted.map((m,i)=>{
     const g=m.tipoMov==='Gasto';
+    const sym=(m.moneda||'PEN')==='USD'?'$':'S/.';
     const rei=m.reembolsable==='Sí'?`<span style="color:var(--green)">✓</span>`:`<span style="color:var(--muted)">–</span>`;
     return `<tr><td style="color:var(--muted2)">${m.fechaStr}</td><td>${m.descripcion}</td><td>${m.categoria}</td>
       <td><span class="bdg ${BC[m.tipo]||''}">${m.tipo}</span></td>
       <td style="font-size:11px;color:var(--muted2)">${m.medioPago}</td>
-      <td style="text-align:right" class="${g?'rv':'gv'}">${(g?'- ':'+ ')+'S/.'+m.monto.toFixed(2)}</td>
+      <td style="text-align:right" class="${g?'rv':'gv'}">${(g?'- ':'+ ')+sym+m.monto.toFixed(2)}</td>
       <td style="text-align:center">${rei}</td>
       <td style="text-align:center;white-space:nowrap"><button class="delbtn" title="Editar" onclick="openEdit(${i})">✏️</button><button class="delbtn" title="Eliminar" onclick="confirmDeleteIdx(${i})">🗑️</button></td></tr>`;
   }).join('');
-  const tg=sorted.filter(m=>m.tipoMov==='Gasto').reduce((s,m)=>s+m.monto,0);
-  const ti=sorted.filter(m=>m.tipoMov==='Ingreso').reduce((s,m)=>s+m.monto,0);
+  const isPen=m=>(m.moneda||'PEN')==='PEN', isUsd=m=>(m.moneda||'PEN')==='USD';
+  const tg=sorted.filter(m=>m.tipoMov==='Gasto'&&isPen(m)).reduce((s,m)=>s+m.monto,0);
+  const ti=sorted.filter(m=>m.tipoMov==='Ingreso'&&isPen(m)).reduce((s,m)=>s+m.monto,0);
+  const tgU=sorted.filter(m=>m.tipoMov==='Gasto'&&isUsd(m)).reduce((s,m)=>s+m.monto,0);
+  const tiU=sorted.filter(m=>m.tipoMov==='Ingreso'&&isUsd(m)).reduce((s,m)=>s+m.monto,0);
   const neto=ti-tg;
   document.getElementById('tCount').textContent=sorted.length+' transacción'+(sorted.length!==1?'es':'');
-  document.getElementById('tTotal').innerHTML=`<span style="color:var(--red)">-S/.${tg.toFixed(2)}</span> <span style="color:var(--muted)">·</span> <span style="color:var(--green)">+S/.${ti.toFixed(2)}</span> <span style="color:var(--muted)">· Neto</span> <span style="color:${neto>=0?'var(--green)':'var(--red)'}">${neto>=0?'+':''}S/.${neto.toFixed(2)}</span>`;
+  let footHtml=`<span style="color:var(--red)">-S/.${tg.toFixed(2)}</span> <span style="color:var(--muted)">·</span> <span style="color:var(--green)">+S/.${ti.toFixed(2)}</span> <span style="color:var(--muted)">· Neto</span> <span style="color:${neto>=0?'var(--green)':'var(--red)'}">${neto>=0?'+':''}S/.${neto.toFixed(2)}</span>`;
+  if(tgU>0||tiU>0){
+    footHtml+=` <span style="color:var(--muted)">|</span> <span style="color:var(--gold)">USD</span> <span style="color:var(--red)">-$${tgU.toFixed(2)}</span> <span style="color:var(--green)">+$${tiU.toFixed(2)}</span>`;
+  }
+  document.getElementById('tTotal').innerHTML=footHtml;
 }
 
 function renderAll(){renderKPIs();renderCatChart();renderMedioChart();renderDisp();renderCredDetail();renderTable();}
@@ -972,10 +1007,11 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzPOYjlUk49DGGD
 let currentStep = 'edit';
 let pendingData  = {};
 let editingOriginal = null; // si != null, el form está en modo edición
+let formMoneda = 'PEN';     // moneda del movimiento actual en el form (PEN/USD)
 
 function openForm() {
   editingOriginal = null;
-  buildSelects();
+  setFormMoneda('PEN'); // resetea toggle + reconstruye categorías/medios
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('fDate').value = today;
   document.getElementById('fDesc').value = '';
@@ -1009,10 +1045,10 @@ function closeForm() {
 }
 
 function buildSelects() {
-  // Categorías (solo PEN) — orden alfabético
+  // Categorías filtradas por la moneda seleccionada en el toggle — orden alfabético
   const catSel = document.getElementById('fCat');
   catSel.innerHTML = '';
-  state.presupuesto.filter(p=>p.moneda==='PEN')
+  state.presupuesto.filter(p=>p.moneda===formMoneda)
     .map(p=>p.categoria)
     .sort((a,b)=>a.localeCompare(b,'es'))
     .forEach(c=>{
@@ -1021,14 +1057,23 @@ function buildSelects() {
   buildMedioDropdown();
 }
 
+function setFormMoneda(mon){
+  formMoneda = mon;
+  document.querySelectorAll('.cur-btn').forEach(b=>b.classList.toggle('active', b.dataset.mon===mon));
+  document.getElementById('fMontoMonedaLabel').textContent = mon==='PEN' ? '(S/.)' : '($)';
+  buildSelects();
+}
+
 // ══ CUSTOM MEDIO DE PAGO DROPDOWN (con color + agrupado por tipo) ══
-const TIPO_ICONS = { 'Crédito':'💳', 'Débito':'🏧', 'Ahorro':'🐷' };
-const TIPO_ORDER  = ['Débito','Crédito','Ahorro'];
+const TIPO_ICONS = { 'Crédito':'💳', 'Débito':'🏧', 'Ahorro':'🐷', 'Ahorro USD':'🐷' };
+const TIPO_ORDER  = ['Débito','Crédito','Ahorro','Ahorro USD'];
 
 function buildMedioDropdown(){
   const drop = document.getElementById('fMedioDrop');
   drop.innerHTML = '';
-  const cuentas = state.cuentas.filter(c=>c.moneda==='PEN');
+  // El medio de pago es independiente de la moneda de la transacción
+  // (ej: una suscripción en USD puede pagarse con una tarjeta que factura en soles)
+  const cuentas = state.cuentas;
   const grupos = {};
   cuentas.forEach(c=>{ (grupos[c.tipo]=grupos[c.tipo]||[]).push(c); });
 
@@ -1040,7 +1085,7 @@ function buildMedioDropdown(){
     grupos[tipo].forEach(c=>{
       const opt=document.createElement('div');
       opt.className='acc-sel-opt';
-      opt.innerHTML=`<span class="acc-sel-dot" style="background:${c.color}"></span><span>${c.nombre}</span>`;
+      opt.innerHTML=`<span class="acc-sel-dot" style="background:${c.color}"></span><span>${c.nombre}</span>${c.moneda==='USD'?'<span class="usd-tag">USD</span>':''}`;
       opt.onclick=()=>selectMedio(c.nombre,c.color);
       drop.appendChild(opt);
     });
@@ -1123,9 +1168,11 @@ function goPreview() {
     medioPago:   medio,
     monto:       monto.toFixed(2),
     reembolsable:reimb,
+    moneda:      formMoneda,
   };
 
   const isG = tipo !== 'Ingreso';
+  const curSym = formMoneda==='USD' ? '$' : 'S/.';
   const BC  = {Variable:'bv',Fijo:'bf',Ahorro:'ba',Ingreso:'bi'};
   document.getElementById('pvContent').innerHTML = `
     <div class="pv-row"><span class="pv-l">📅 Fecha</span>       <span class="pv-r">${pendingData.fecha}</span></div>
@@ -1133,7 +1180,7 @@ function goPreview() {
     <div class="pv-row"><span class="pv-l">🏷️ Tipo</span>        <span class="pv-r"><span class="bdg ${BC[tipo]||''}">${tipo}</span></span></div>
     <div class="pv-row"><span class="pv-l">📂 Categoría</span>   <span class="pv-r">${pendingData.categoria}</span></div>
     <div class="pv-row"><span class="pv-l">💳 Medio de Pago</span><span class="pv-r">${pendingData.medioPago}</span></div>
-    <div class="pv-row"><span class="pv-l">💰 Monto</span>        <span class="pv-r ${isG?'rv':'gv'}">${isG?'- ':'+ '}S/.${parseFloat(pendingData.monto).toFixed(2)}</span></div>
+    <div class="pv-row"><span class="pv-l">💰 Monto</span>        <span class="pv-r ${isG?'rv':'gv'}">${isG?'- ':'+ '}${curSym}${parseFloat(pendingData.monto).toFixed(2)}</span></div>
     <div class="pv-row"><span class="pv-l">↩️ Reembolsable</span><span class="pv-r">${pendingData.reembolsable}</span></div>`;
   setStep('preview');
 }
@@ -1164,6 +1211,7 @@ async function submitMov() {
         medioPago:       pendingData.medioPago,
         monto:           pendingData.monto,
         reembolsable:    pendingData.reembolsable,
+        moneda:          pendingData.moneda,
       });
       const res = await fetch(`${APPS_SCRIPT_URL}?${qs.toString()}`);
       text = await res.text();
@@ -1218,7 +1266,7 @@ function ensureOpt(selId,val){
 function openEdit(i){
   const m=window._tableRows[i];
   if(!m)return;
-  buildSelects();
+  setFormMoneda(m.moneda||'PEN');
   ensureOpt('fCat',m.categoria);
   const p=m.fechaStr.split('/');
   document.getElementById('fDate').value=`${p[2]}-${p[1]}-${p[0]}`;
