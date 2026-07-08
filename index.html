@@ -109,6 +109,11 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .bi{background:rgba(6,214,160,.12);color:var(--green)}
 .rv{color:var(--red);font-weight:700}.gv{color:var(--green);font-weight:700}
 .tfoot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--muted2)}
+/* 💰 BALANCE — tarjetitas claras arriba del historial */
+.bal-row{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:16px}
+.bal-chip{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px;padding:9px 15px;min-width:118px}
+.bal-chip-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;white-space:nowrap}
+.bal-chip-val{font-size:16px;font-weight:800;letter-spacing:-.2px}
 .empty{text-align:center;padding:26px 0;color:var(--muted);font-size:13px}
 /* 💱 CURRENCY TOGGLE (PEN/USD) en el formulario */
 .cur-toggle{display:flex;gap:6px;margin-bottom:8px}
@@ -393,6 +398,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <button class="fb" onclick="setTFilter('Ahorro',this)">Ahorros</button>
     </div>
   </div>
+  <div class="bal-row" id="balRow"></div>
   <div class="twrap"><table><thead><tr>
     <th onclick="sortBy('fechaTs')">Fecha ↕</th>
     <th onclick="sortBy('descripcion')">Descripción ↕</th>
@@ -403,10 +409,6 @@ tr:hover td{background:rgba(255,255,255,.02)}
     <th style="text-align:center">Reimb.</th>
     <th style="text-align:center;width:40px"></th>
   </tr></thead><tbody id="tbody"></tbody></table></div>
-  <div class="tfoot">
-    <span>Balance del período:</span>
-    <span id="tTotal" style="font-size:14px;font-weight:800;color:var(--red)">—</span>
-  </div>
 </div>
 
 <!-- ─── DELETE CONFIRM MODAL ─── -->
@@ -831,9 +833,9 @@ function renderTable(){
   });
   const tbody=document.getElementById('tbody');
   if(!sorted.length){
-    tbody.innerHTML='<tr><td colspan="7"><div class="empty">📭 Sin movimientos para este filtro</div></td></tr>';
+    tbody.innerHTML='<tr><td colspan="8"><div class="empty">📭 Sin movimientos para este filtro</div></td></tr>';
     document.getElementById('tCount').textContent='0 transacciones';
-    document.getElementById('tTotal').textContent='—';
+    document.getElementById('balRow').innerHTML='';
     return;
   }
   const BC={Fijo:'bf',Variable:'bv',Ahorro:'ba',Ingreso:'bi'};
@@ -859,11 +861,21 @@ function renderTable(){
   const tiU=sorted.filter(m=>m.tipoMov==='Ingreso'&&isUsd(m)).reduce((s,m)=>s+m.monto,0);
   const neto=ti-tg;
   document.getElementById('tCount').textContent=sorted.length+' transacción'+(sorted.length!==1?'es':'');
-  let footHtml=`<span style="color:var(--red)">-S/.${tg.toFixed(2)}</span> <span style="color:var(--muted)">·</span> <span style="color:var(--green)">+S/.${ti.toFixed(2)}</span> <span style="color:var(--muted)">· Neto</span> <span style="color:${neto>=0?'var(--green)':'var(--red)'}">${neto>=0?'+':''}S/.${neto.toFixed(2)}</span>`;
+
+  // 💰 Balance del período — tarjetitas claras arriba de la tabla
+  let balHtml = `
+    <div class="bal-chip"><div class="bal-chip-lbl">📤 Gastos</div><div class="bal-chip-val" style="color:var(--red)">-${fmtPEN(tg)}</div></div>
+    <div class="bal-chip"><div class="bal-chip-lbl">📥 Ingresos</div><div class="bal-chip-val" style="color:var(--green)">+${fmtPEN(ti)}</div></div>
+    <div class="bal-chip"><div class="bal-chip-lbl">⚖️ Balance Neto</div><div class="bal-chip-val" style="color:${neto>=0?'var(--green)':'var(--red)'}">${neto>=0?'+':'-'}${fmtPEN(Math.abs(neto))}</div></div>`;
   if(tgU>0||tiU>0){
-    footHtml+=` <span style="color:var(--muted)">|</span> <span style="color:var(--gold)">USD</span> <span style="color:var(--red)">-$${tgU.toFixed(2)}</span> <span style="color:var(--green)">+$${tiU.toFixed(2)}</span>`;
+    balHtml += `
+    <div class="bal-chip"><div class="bal-chip-lbl">💵 Gastos USD</div><div class="bal-chip-val" style="color:var(--red)">-$${tgU.toFixed(2)}</div></div>`;
+    if(tiU>0){
+      balHtml += `
+    <div class="bal-chip"><div class="bal-chip-lbl">💵 Ingresos USD</div><div class="bal-chip-val" style="color:var(--green)">+$${tiU.toFixed(2)}</div></div>`;
+    }
   }
-  document.getElementById('tTotal').innerHTML=footHtml;
+  document.getElementById('balRow').innerHTML = balHtml;
 }
 
 function renderAll(){renderKPIs();renderCatChart();renderMedioChart();renderDisp();renderCredDetail();renderTable();}
