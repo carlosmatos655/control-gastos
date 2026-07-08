@@ -41,7 +41,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .st-cached{background:rgba(77,171,247,.12);border:1px solid var(--blue);color:var(--blue)}
 
 /* KPI */
-.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:11px;padding:16px 18px;position:relative;overflow:hidden}
 .kpi-bar-top{position:absolute;top:0;left:0;right:0;height:2px}
 .ki{font-size:18px;margin-bottom:7px}
@@ -135,6 +135,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
 .dbr:disabled{opacity:.4;cursor:not-allowed}
 .footer{text-align:center;font-size:11px;color:var(--muted);padding:6px 0}
 
+@media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:860px){.kpi-grid{grid-template-columns:repeat(2,1fr)}.row-wide,.row-half{grid-template-columns:1fr}}
 @media(max-width:480px){body{padding:10px}.kpi-grid{grid-template-columns:1fr 1fr}.kv{font-size:17px}}
 
@@ -199,6 +200,49 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .fp{width:100vw;right:-100vw}
   .fab{width:62px;height:62px;font-size:30px;right:16px;bottom:18px}
   .fp-body{padding:16px 18px}
+}
+
+/* 📱 MOBILE: tabla de movimientos como tarjetas apiladas (sin scroll horizontal) */
+@media(max-width:700px){
+  .twrap{overflow-x:visible}
+  table, thead, tbody, tr, td{display:block; width:100%}
+  thead{display:none}
+  tbody tr{
+    position:relative;
+    border:1px solid var(--border);
+    border-left:3px solid var(--border2);
+    border-radius:10px;
+    padding:10px 56px 10px 12px;
+    margin-bottom:10px;
+    background:rgba(255,255,255,.015);
+  }
+  tbody tr.row-gasto{border-left-color:var(--red)}
+  tbody tr.row-ingreso{border-left-color:var(--green)}
+  tbody tr:hover td{background:none}
+  td{
+    border:none !important;
+    padding:4px 0 !important;
+    text-align:left !important;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-size:12px;
+  }
+  td[data-label]::before{
+    content:attr(data-label);
+    font-size:9px;
+    text-transform:uppercase;
+    letter-spacing:.6px;
+    color:var(--muted);
+    flex-shrink:0;
+    margin-right:10px;
+  }
+  td[data-label="Descripción"]{font-weight:700;font-size:13px;color:var(--text)}
+  td[data-label="Monto"]{font-size:15px;font-weight:800}
+  td.actions-cell{
+    position:absolute; top:8px; right:10px;
+    padding:0 !important; width:auto;
+  }
 }
 
 /* ── CUSTOM ACCOUNT DROPDOWN (medio de pago) ── */
@@ -269,6 +313,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   <div class="kpi"><div class="kpi-bar-top" style="background:var(--gold)"></div><div class="ki">📊</div><div class="kl">% Presupuesto Usado</div><div class="kv" id="kPct">—</div><div class="ks" id="kPctSub">—</div><div class="kprog"><div class="kpf" id="kPctBar" style="background:var(--gold)"></div></div></div>
   <div class="kpi"><div class="kpi-bar-top" style="background:var(--green)"></div><div class="ki">🏦</div><div class="kl">Liquidez Total S/.</div><div class="kv" id="kLiquidez">—</div><div class="ks">Débito + Ahorros en soles</div></div>
   <div class="kpi"><div class="kpi-bar-top" style="background:var(--blue)"></div><div class="ki">💳</div><div class="kl">Crédito Disponible</div><div class="kv" id="kCredito">—</div><div class="ks">Total líneas disponibles</div></div>
+  <div class="kpi"><div class="kpi-bar-top" style="background:var(--orange)"></div><div class="ki">💵</div><div class="kl">Gasto en USD</div><div class="kv" id="kUsd">—</div><div class="ks" id="kUsdSub">—</div><div class="kprog"><div class="kpf" id="kUsdBar" style="background:var(--orange)"></div></div></div>
 </div>
 
 <!-- ROW 1 -->
@@ -448,6 +493,12 @@ tr:hover td{background:rgba(255,255,255,.02)}
 // ══ CONFIG ══════════════════════════════════════════════
 const SHEET_ID = '19RA46O6rL1Hp5-AvK0Exq3l3j9NPmAZVurbD6Z8w-lY';
 
+// 💱 Tipo de cambio USD→PEN para mostrar el equivalente aproximado en la
+// tarjeta "Gasto en USD". Actualízalo manualmente cuando quieras que sea
+// más preciso (ej. revisando el tipo de cambio del día en tu banco).
+// Es solo referencial — el gasto real en USD siempre se muestra sin convertir.
+const EXCHANGE_RATE = 3.75;
+
 // gviz/tq SÍ lee por nombre de pestaña correctamente (a diferencia de /pub que
 // solo lee por gid e ignora el parámetro sheet=, devolviendo siempre la misma hoja)
 function getGvizUrl(sheetName) {
@@ -543,14 +594,17 @@ async function fetchSheet(sheetName, validateFn) {
 function parseMovimientos(rows){
   let start=rows.findIndex(r=>r[0]&&r[0].toLowerCase().includes('fecha'));
   if(start<0)start=0; else start++;
-  return rows.slice(start).filter(r=>r[0]&&/\d{1,2}\/\d{1,2}\/\d{4}/.test(r[0])).map(r=>{
-    const monto=parseAmt(r[5]),tipo=r[2]||'',cat=r[3]||'';
-    let tipoMov='Gasto';
-    if(tipo.toLowerCase()==='ingreso')tipoMov='Ingreso';
-    else if(cat.toLowerCase().includes('ahorro')||tipo.toLowerCase()==='ahorro')tipoMov='Ahorro';
-    const moneda = String(r[7]||'').trim().toUpperCase()==='USD' ? 'USD' : 'PEN';
-    return{fechaStr:r[0],fechaTs:parseFecha(r[0]),descripcion:r[1]||'',tipo,categoria:cat,medioPago:r[4]||'',monto,reembolsable:r[6]||'No',tipoMov,moneda};
-  }).filter(m=>m.monto>0);
+  return rows.slice(start)
+    .map((r,idx)=>({r,idx}))
+    .filter(o=>o.r[0]&&/\d{1,2}\/\d{1,2}\/\d{4}/.test(o.r[0]))
+    .map(({r,idx})=>{
+      const monto=parseAmt(r[5]),tipo=r[2]||'',cat=r[3]||'';
+      let tipoMov='Gasto';
+      if(tipo.toLowerCase()==='ingreso')tipoMov='Ingreso';
+      else if(cat.toLowerCase().includes('ahorro')||tipo.toLowerCase()==='ahorro')tipoMov='Ahorro';
+      const moneda = String(r[7]||'').trim().toUpperCase()==='USD' ? 'USD' : 'PEN';
+      return{fechaStr:r[0],fechaTs:parseFecha(r[0]),descripcion:r[1]||'',tipo,categoria:cat,medioPago:r[4]||'',monto,reembolsable:r[6]||'No',tipoMov,moneda,idx};
+    }).filter(m=>m.monto>0);
 }
 
 function parsePresupuesto(rows){
@@ -636,6 +690,17 @@ function renderKPIs(){
   document.getElementById('kPctBar').style.width=Math.min(pct,100)+'%';
   document.getElementById('kLiquidez').textContent='S/.'+fmtNum(Math.round(liq));
   document.getElementById('kCredito').textContent='S/.'+fmtNum(Math.round(cred));
+
+  // 💵 Gasto en USD (independiente de soles, sin mezclar escalas)
+  const gastoUsd  = filteredMovs.filter(m=>m.tipoMov==='Gasto'&&(m.moneda||'PEN')==='USD').reduce((s,m)=>s+m.monto,0);
+  const totalPUsd = state.presupuesto.filter(p=>p.moneda==='USD').reduce((s,p)=>s+p.presupuesto,0);
+  const pctUsd    = totalPUsd>0 ? gastoUsd/totalPUsd*100 : 0;
+  const approxPen = gastoUsd*EXCHANGE_RATE;
+  document.getElementById('kUsd').textContent = '$'+gastoUsd.toFixed(2);
+  document.getElementById('kUsdSub').textContent = totalPUsd>0
+    ? `de $${totalPUsd.toFixed(2)} · ≈S/.${approxPen.toFixed(2)} (TC ${EXCHANGE_RATE})`
+    : `≈ S/.${approxPen.toFixed(2)} (TC ${EXCHANGE_RATE})`;
+  document.getElementById('kUsdBar').style.width = Math.min(pctUsd,100)+'%';
 }
 
 function renderCatChart(){
@@ -728,9 +793,15 @@ function renderCredDetail(){
 function renderTable(){
   const sorted=[...filteredMovs].sort((a,b)=>{
     let va=a[sortKey],vb=b[sortKey];
-    if(va instanceof Date)return sortDir*(va-vb);
-    if(typeof va==='number')return sortDir*(va-vb);
-    return sortDir*String(va).localeCompare(String(vb),'es');
+    let cmp;
+    if(va instanceof Date)cmp=va-vb;
+    else if(typeof va==='number')cmp=va-vb;
+    else cmp=String(va).localeCompare(String(vb),'es');
+    cmp = sortDir*cmp;
+    if(cmp!==0) return cmp;
+    // Desempate: a igualdad del criterio elegido, lo más recientemente
+    // registrado en el Sheets (idx más alto) se muestra primero
+    return (b.idx||0)-(a.idx||0);
   });
   const tbody=document.getElementById('tbody');
   if(!sorted.length){
@@ -745,12 +816,15 @@ function renderTable(){
     const g=m.tipoMov==='Gasto';
     const sym=(m.moneda||'PEN')==='USD'?'$':'S/.';
     const rei=m.reembolsable==='Sí'?`<span style="color:var(--green)">✓</span>`:`<span style="color:var(--muted)">–</span>`;
-    return `<tr><td style="color:var(--muted2)">${m.fechaStr}</td><td>${m.descripcion}</td><td>${m.categoria}</td>
-      <td><span class="bdg ${BC[m.tipo]||''}">${m.tipo}</span></td>
-      <td style="font-size:11px;color:var(--muted2)">${m.medioPago}</td>
-      <td style="text-align:right" class="${g?'rv':'gv'}">${(g?'- ':'+ ')+sym+m.monto.toFixed(2)}</td>
-      <td style="text-align:center">${rei}</td>
-      <td style="text-align:center;white-space:nowrap"><button class="delbtn" title="Editar" onclick="openEdit(${i})">✏️</button><button class="delbtn" title="Eliminar" onclick="confirmDeleteIdx(${i})">🗑️</button></td></tr>`;
+    return `<tr class="${g?'row-gasto':'row-ingreso'}">
+      <td data-label="Fecha" style="color:var(--muted2)">${m.fechaStr}</td>
+      <td data-label="Descripción">${m.descripcion}</td>
+      <td data-label="Categoría">${m.categoria}</td>
+      <td data-label="Tipo"><span class="bdg ${BC[m.tipo]||''}">${m.tipo}</span></td>
+      <td data-label="Medio de Pago" style="font-size:11px;color:var(--muted2)">${m.medioPago}</td>
+      <td data-label="Monto" style="text-align:right" class="${g?'rv':'gv'}">${(g?'- ':'+ ')+sym+m.monto.toFixed(2)}</td>
+      <td data-label="Reembolsable" style="text-align:center">${rei}</td>
+      <td class="actions-cell" style="text-align:center;white-space:nowrap"><button class="delbtn" title="Editar" onclick="openEdit(${i})">✏️</button><button class="delbtn" title="Eliminar" onclick="confirmDeleteIdx(${i})">🗑️</button></td></tr>`;
   }).join('');
   const isPen=m=>(m.moneda||'PEN')==='PEN', isUsd=m=>(m.moneda||'PEN')==='USD';
   const tg=sorted.filter(m=>m.tipoMov==='Gasto'&&isPen(m)).reduce((s,m)=>s+m.monto,0);
