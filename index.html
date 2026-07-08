@@ -23,7 +23,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,san
 .bi-step{background:rgba(240,180,41,.1);border:1px solid rgba(240,180,41,.3);color:var(--gold);padding:3px 9px;border-radius:20px;font-weight:600}
 
 /* HEADER */
-.hdr{background:linear-gradient(135deg,#0f1f3d,#141c2e 55%,#1a2540);border:1px solid var(--border2);border-radius:14px;padding:18px 24px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;position:relative;overflow:hidden}
+.hdr{background:linear-gradient(135deg,#0f1f3d,#141c2e 55%,#1a2540);border:1px solid var(--border2);border-radius:14px;padding:18px 24px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;position:relative}
 .hdr::after{content:'';position:absolute;top:-70px;right:-70px;width:220px;height:220px;background:radial-gradient(circle,rgba(240,180,41,.07),transparent 70%);pointer-events:none}
 .h-title{font-size:18px;font-weight:800;letter-spacing:-.3px}.h-title span{color:var(--gold)}
 .h-sub{font-size:11px;color:var(--muted2);margin-top:2px}
@@ -396,6 +396,9 @@ tr:hover td{background:rgba(255,255,255,.02)}
       <button class="fb" onclick="setTFilter('Gasto',this)">Gastos</button>
       <button class="fb" onclick="setTFilter('Ingreso',this)">Ingresos</button>
       <button class="fb" onclick="setTFilter('Ahorro',this)">Ahorros</button>
+      <select class="pill" id="selMedioTabla" onchange="applyFilters()">
+        <option value="all">Todos los medios</option>
+      </select>
     </div>
   </div>
   <div class="bal-row" id="balRow"></div>
@@ -681,6 +684,7 @@ async function syncNow(){
     try{ await window.storage.set('moncho_data',JSON.stringify({movs:state.movimientos.map(m=>({...m,fechaTs:undefined})),pres:state.presupuesto,cuen:state.cuentas,ts:now.toISOString()})); }catch(e){}
 
     populateCatSelect();
+    populateMedioTablaSelect();
     populateMesSelect();
     applyFilters();
 
@@ -883,11 +887,13 @@ function renderAll(){renderKPIs();renderCatChart();renderMedioChart();renderDisp
 // ══ FILTERS ══════════════════════════════════════════════
 function applyFilters(){
   const cat=document.getElementById('selCat').value;
+  const medioSel=document.getElementById('selMedioTabla')?document.getElementById('selMedioTabla').value:'all';
   filteredMovs=state.movimientos.filter(m=>{
     const key=getMesKey(m.fechaStr);
     const mM=selectedMeses.size===0||(key&&selectedMeses.has(key));
     const mC=cat==='all'||m.categoria===cat;
-    return mM&&mC&&(tableFilter==='all'||m.tipoMov===tableFilter);
+    const mMedio=medioSel==='all'||m.medioPago===medioSel;
+    return mM&&mC&&mMedio&&(tableFilter==='all'||m.tipoMov===tableFilter);
   });
   renderAll();
 }
@@ -901,6 +907,19 @@ function populateCatSelect(){
   const movCats  = state.movimientos.map(m=>m.categoria);
   const all = [...new Set([...presCats, ...movCats])].sort((a,b)=>a.localeCompare(b,'es'));
   sel.innerHTML = '<option value="all">Todas las categorías</option>';
+  all.forEach(c=>{const o=document.createElement('option');o.value=c;o.text=c;sel.appendChild(o);});
+  if([...sel.options].some(o=>o.value===current)) sel.value=current;
+}
+
+function populateMedioTablaSelect(){
+  const sel=document.getElementById('selMedioTabla');
+  if(!sel)return;
+  const current=sel.value;
+  // Unión: cuentas conocidas + cualquier medio de pago usado en movimientos (por si acaso)
+  const cuentaNames = state.cuentas.map(c=>c.nombre);
+  const movMedios   = state.movimientos.map(m=>m.medioPago).filter(Boolean);
+  const all = [...new Set([...cuentaNames, ...movMedios])].sort((a,b)=>a.localeCompare(b,'es'));
+  sel.innerHTML = '<option value="all">Todos los medios</option>';
   all.forEach(c=>{const o=document.createElement('option');o.value=c;o.text=c;sel.appendChild(o);});
   if([...sel.options].some(o=>o.value===current)) sel.value=current;
 }
@@ -1032,6 +1051,7 @@ async function init(){
 
   filteredMovs=[...state.movimientos];
   populateCatSelect();
+  populateMedioTablaSelect();
   populateMesSelect();
   renderAll();
 
