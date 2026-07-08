@@ -202,7 +202,7 @@ tr:hover td{background:rgba(255,255,255,.02)}
   .fp-body{padding:16px 18px}
 }
 
-/* 📱 MOBILE: tabla de movimientos como tarjetas apiladas (sin scroll horizontal) */
+/* 📱 MOBILE: tabla de movimientos como tarjetas colapsables (sin scroll horizontal) */
 @media(max-width:700px){
   .twrap{overflow-x:visible}
   table, thead, tbody, tr, td{display:block; width:100%}
@@ -212,13 +212,23 @@ tr:hover td{background:rgba(255,255,255,.02)}
     border:1px solid var(--border);
     border-left:3px solid var(--border2);
     border-radius:10px;
-    padding:10px 56px 10px 12px;
+    padding:10px 30px 10px 12px;
     margin-bottom:10px;
     background:rgba(255,255,255,.015);
+    cursor:pointer;
   }
   tbody tr.row-gasto{border-left-color:var(--red)}
   tbody tr.row-ingreso{border-left-color:var(--green)}
   tbody tr:hover td{background:none}
+  /* Chevron indicador de expandir/colapsar */
+  tbody tr::after{
+    content:'▾';
+    position:absolute; top:10px; right:10px;
+    color:var(--muted); font-size:11px;
+    transition:transform .2s;
+  }
+  tbody tr.row-expanded::after{ transform:rotate(180deg); }
+
   td{
     border:none !important;
     padding:4px 0 !important;
@@ -239,10 +249,21 @@ tr:hover td{background:rgba(255,255,255,.02)}
   }
   td[data-label="Descripción"]{font-weight:700;font-size:13px;color:var(--text)}
   td[data-label="Monto"]{font-size:15px;font-weight:800}
+
+  /* Colapsado: solo Fecha, Descripción y Monto son visibles.
+     El resto (Categoría, Tipo, Medio de Pago, Reembolsable, acciones)
+     se revela solo al tocar la tarjeta. */
+  td.detail-row{ display:none; }
+  tbody tr.row-expanded td.detail-row{ display:flex; }
+
   td.actions-cell{
-    position:absolute; top:8px; right:10px;
-    padding:0 !important; width:auto;
+    padding-top:8px !important;
+    margin-top:6px;
+    border-top:1px solid rgba(255,255,255,.06) !important;
+    justify-content:flex-end;
+    gap:4px;
   }
+  td.actions-cell .delbtn{ font-size:16px; padding:5px 9px; }
 }
 
 /* ── CUSTOM ACCOUNT DROPDOWN (medio de pago) ── */
@@ -790,6 +811,11 @@ function renderCredDetail(){
     `Presupuestado: <strong>$${totalUsdPres.toFixed(2)}</strong> · Gastado: <strong style="color:var(--red)">$${totalUsdGasto.toFixed(2)}</strong> · Disponible: <strong style="color:var(--green)">$${(totalUsdPres-totalUsdGasto).toFixed(2)}</strong>`;
 }
 
+// 📱 Expandir/colapsar tarjeta de movimiento (solo tiene efecto visual en móvil)
+function toggleRowExpand(tr){
+  tr.classList.toggle('row-expanded');
+}
+
 function renderTable(){
   const sorted=[...filteredMovs].sort((a,b)=>{
     let va=a[sortKey],vb=b[sortKey];
@@ -816,15 +842,15 @@ function renderTable(){
     const g=m.tipoMov==='Gasto';
     const sym=(m.moneda||'PEN')==='USD'?'$':'S/.';
     const rei=m.reembolsable==='Sí'?`<span style="color:var(--green)">✓</span>`:`<span style="color:var(--muted)">–</span>`;
-    return `<tr class="${g?'row-gasto':'row-ingreso'}">
+    return `<tr class="${g?'row-gasto':'row-ingreso'}" onclick="toggleRowExpand(this)">
       <td data-label="Fecha" style="color:var(--muted2)">${m.fechaStr}</td>
       <td data-label="Descripción">${m.descripcion}</td>
-      <td data-label="Categoría">${m.categoria}</td>
-      <td data-label="Tipo"><span class="bdg ${BC[m.tipo]||''}">${m.tipo}</span></td>
-      <td data-label="Medio de Pago" style="font-size:11px;color:var(--muted2)">${m.medioPago}</td>
+      <td data-label="Categoría" class="detail-row">${m.categoria}</td>
+      <td data-label="Tipo" class="detail-row"><span class="bdg ${BC[m.tipo]||''}">${m.tipo}</span></td>
+      <td data-label="Medio de Pago" class="detail-row" style="font-size:11px;color:var(--muted2)">${m.medioPago}</td>
       <td data-label="Monto" style="text-align:right" class="${g?'rv':'gv'}">${(g?'- ':'+ ')+sym+m.monto.toFixed(2)}</td>
-      <td data-label="Reembolsable" style="text-align:center">${rei}</td>
-      <td class="actions-cell" style="text-align:center;white-space:nowrap"><button class="delbtn" title="Editar" onclick="openEdit(${i})">✏️</button><button class="delbtn" title="Eliminar" onclick="confirmDeleteIdx(${i})">🗑️</button></td></tr>`;
+      <td data-label="Reembolsable" class="detail-row" style="text-align:center">${rei}</td>
+      <td class="actions-cell detail-row" style="text-align:center;white-space:nowrap"><button class="delbtn" title="Editar" onclick="event.stopPropagation();openEdit(${i})">✏️</button><button class="delbtn" title="Eliminar" onclick="event.stopPropagation();confirmDeleteIdx(${i})">🗑️</button></td></tr>`;
   }).join('');
   const isPen=m=>(m.moneda||'PEN')==='PEN', isUsd=m=>(m.moneda||'PEN')==='USD';
   const tg=sorted.filter(m=>m.tipoMov==='Gasto'&&isPen(m)).reduce((s,m)=>s+m.monto,0);
